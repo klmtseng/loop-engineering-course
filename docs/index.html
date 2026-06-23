@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loop Engineering — 第 1 課(互動)</title>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--ink:#e6edf3;--mut:#8b949e;--acc:#58a6ff;--ok:#3fb950;--bad:#f85149;--line:#30363d}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 -apple-system,"Noto Sans CJK TC","PingFang TC",Segoe UI,sans-serif}
+  header{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0}
+  header .tag{color:var(--mut);font-size:13px}
+  #status{margin-left:auto;color:var(--mut);font-size:13px}
+  .wrap{display:grid;grid-template-columns:1fr 1fr;gap:0;min-height:calc(100vh - 60px)}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}}
+  .col{padding:22px;overflow:auto}
+  .col.left{border-right:1px solid var(--line)}
+  .md h1{font-size:22px} .md h2{font-size:18px;margin-top:1.6em;border-bottom:1px solid var(--line);padding-bottom:4px}
+  .md h3{font-size:15px;color:var(--acc)} .md code{background:#1f2630;padding:2px 5px;border-radius:4px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+  .md pre{background:#010409;border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto}
+  .md pre code{background:none;padding:0}
+  .md table{border-collapse:collapse;width:100%} .md th,.md td{border:1px solid var(--line);padding:6px 8px;font-size:13px}
+  .md blockquote{border-left:3px solid var(--acc);margin:1em 0;padding:2px 14px;color:var(--mut)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:18px}
+  .card h3{margin:0 0 10px;font-size:15px}
+  button{background:#21262d;color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:8px 14px;font-size:14px;cursor:pointer}
+  button:hover{border-color:var(--acc)} button:disabled{opacity:.5;cursor:wait}
+  button.primary{background:var(--acc);color:#04101f;border-color:var(--acc);font-weight:600}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  textarea{width:100%;height:300px;background:#010409;color:var(--ink);border:1px solid var(--line);border-radius:8px;
+    padding:12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.5;resize:vertical;tab-size:4}
+  .term{background:#010409;border:1px solid var(--line);border-radius:8px;padding:12px;min-height:120px;white-space:pre-wrap;
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.55;overflow:auto;max-height:360px}
+  .hint{color:var(--mut);font-size:12.5px}
+  .ok{color:var(--ok)} .bad{color:var(--bad)} .acc{color:var(--acc)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Loop Engineering from Scratch</h1>
+  <span class="tag">第 1 課 · 最小的閉環(互動切片)</span>
+  <span id="status">啟動中…</span>
+</header>
+<div class="wrap">
+  <div class="col left"><div id="lesson" class="md">載入課文中…</div></div>
+  <div class="col right">
+
+    <div class="card">
+      <h3>▶ 看 Lesson 1 跑起來</h3>
+      <div class="row">
+        <button id="runAnim" class="primary" disabled>▶ 動畫模式</button>
+        <button id="runPlain" disabled>▶ 一般模式</button>
+        <span class="hint">在你瀏覽器裡真的執行 <code>lesson1_minimal_loop.py</code></span>
+      </div>
+      <div id="lessonOut" class="term">（按上面的按鈕)</div>
+    </div>
+
+    <div class="card">
+      <h3>✍️ 動手練習 + 自動評分</h3>
+      <p class="hint">把 <code>loop()</code> 的 TODO 補完(act→verify→decide + 保險絲),按「驗收」讓 autograder 在線上批改。</p>
+      <textarea id="code" spellcheck="false" disabled>載入練習中…</textarea>
+      <div class="row" style="margin-top:10px">
+        <button id="check" class="primary" disabled>✓ 驗收</button>
+        <button id="solution" disabled>看參考解答</button>
+        <button id="reset" disabled>重設</button>
+      </div>
+      <div id="checkOut" class="term">（補完 TODO 後按「驗收」)</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const FILES = {"anim.py": "\"\"\"\nanim.py —— 終端動畫小助手(純標準庫,選用)\n=============================================\n讓學生「看著 loop 真的在轉」。每一課加上 `--animate` 就會慢放演示\nact→verify→decide 的節奏,並畫出保險絲進度條。\n\n設計重點:**關閉時(沒給 --animate)所有函式都是 no-op**——不印任何東西、不 sleep。\n所以課程的預設輸出一個字都不會變,自動化/autograder 也完全不受影響。\n\n用法(在課程腳本裡):\n    import anim\n    anim.from_argv()        # 讀 argv 的 --animate;沒給就維持一般模式\n\n    anim.pause()            # 慢放停頓(關閉時不 sleep)\n    anim.fuse(i, MAX)       # 畫保險絲條 ◉◉◯◯(關閉時不印)\n    anim.step(\"✎\", \"做一步\")  # 帶停頓的敘述行(關閉時不印)\n\"\"\"\n\nimport sys\nimport time\n\n_ON = False  # 是否開啟動畫(--animate)\n\n\ndef from_argv(argv=None):\n    \"\"\"從命令列參數判斷要不要開動畫。回傳是否開啟。\"\"\"\n    global _ON\n    argv = sys.argv if argv is None else argv\n    _ON = \"--animate\" in argv\n    return _ON\n\n\ndef on():\n    return _ON\n\n\ndef pause(seconds=0.7):\n    \"\"\"慢放停頓。關閉時不 sleep(所以一般/CI 跑起來照樣很快)。\"\"\"\n    if _ON:\n        time.sleep(seconds)\n\n\ndef fuse(used, total, label=\"保險絲\"):\n    \"\"\"畫一條保險絲/進度條:◉ 已用、◯ 剩餘。關閉時不印。\"\"\"\n    if not _ON:\n        return\n    bar = \"◉\" * used + \"◯\" * max(0, total - used)\n    print(f\"      {label} [{bar}] {used}/{total}\")\n    pause(0.25)\n\n\ndef step(glyph, msg, seconds=0.7):\n    \"\"\"印一行帶字形的敘述步驟並停頓。關閉時不印(預設輸出不變)。\"\"\"\n    if not _ON:\n        return\n    print(f\"      {glyph} {msg}\")\n    pause(seconds)\n\n\ndef banner(msg):\n    \"\"\"動畫模式下的小標題。關閉時不印。\"\"\"\n    if not _ON:\n        return\n    print(f\"\\n  ╭─ {msg}\")\n    pause(0.4)\n", "lesson1_minimal_loop.py": "\"\"\"\n第 1 課 —— 最小的閉環 (The Minimal Loop)\n==========================================\n這堂課唯一要你內化的觀念:\n\n    Prompt engineering 是「你想好一句話 → 丟給 agent → 看一次結果」。\n    Loop engineering 是「你設計一個系統,讓它自己反覆『做 → 驗 → 決定要不要再來』,\n    直到達標或撞上限才停」。\n\n    換句話說:loop engineering 是把『那個一直盯著 agent、決定要不要再 prompt\n    一次的人』—— 也就是你 —— 換成一段程式。\n\n一個 loop 的最小骨架,永遠是這四件事:\n\n    goal      明確、可被機器判定的目標 (不是「弄好一點」,而是「verify 回傳 True」)\n    act       做一步 (呼叫 agent / 跑一個命令 / 改一個檔)\n    verify    驗一下:達標了嗎?(這一步才是 loop 的靈魂,第 2 課整課在講它)\n    decide    沒達標就帶著回饋再來一圈;達標、或圈數燒完,就停\n\n本課用一個「假 agent」當替身,讓你先看清楚迴圈本身。真正的 agent\n(Claude Code / Codex / 你自己的 LLM 呼叫) 怎麼接進來,textbook 第 1 章有說。\n\n執行:\n    python3 lesson1_minimal_loop.py\n    python3 lesson1_minimal_loop.py --animate    # 慢放,看 loop 一圈圈轉\n\"\"\"\n\nimport os\nimport sys\n\nsys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))\nimport anim\n\n\n# ===========================================================================\n# 任務設定 —— 一個「機器可判定」的目標\n# ===========================================================================\n# 目標:產出一段標語,必須同時 (a) 含有關鍵字「省時」 (b) 不超過 12 個字。\n# 注意這個目標的關鍵特性:它可以被一段程式「客觀判定對或錯」。\n# 模糊的目標 (「寫得好看一點」) 沒辦法做成 loop —— 因為 verify 不知道何時該停。\nGOAL_KEYWORD = \"省時\"\nGOAL_MAXLEN = 12\n\n\ndef verify(draft):\n    \"\"\"驗證閘門。回傳 (是否達標, 給下一圈的回饋)。\n\n    loop 的成敗幾乎全押在這個函式上:它定義了「做完」到底是什麼意思。\n    回饋不是裝飾 —— 它是下一圈 agent 唯一知道「上次哪裡不對」的管道。\n    \"\"\"\n    if GOAL_KEYWORD not in draft:\n        return False, f\"缺少關鍵字「{GOAL_KEYWORD}」\"\n    if len(draft) > GOAL_MAXLEN:\n        return False, f\"太長了({len(draft)} 字),要 ≤ {GOAL_MAXLEN} 字\"\n    return True, \"通過\"\n\n\n# ===========================================================================\n# 假 agent —— 真實世界這裡會是一次 LLM 呼叫 / 一次 Claude Code 執行\n# ===========================================================================\n# 它接收「任務 + 上一圈的回饋」,吐出一個新草稿。\n# 重點不在它多聰明,而在它「每一圈都看得到上一圈的回饋」—— 這就是 agent\n# 能在迴圈裡愈做愈好的全部祕密。我們刻意讓它一開始故意做不好,看 loop 怎麼救回來。\n_DRAFTS = [\n    \"讓您的生活更美好更精彩又開心\",  # 沒關鍵字、又太長 —— 故意的\n    \"省時又省力,生活更輕鬆愉快真好\",  # 有關鍵字了,但還是太長\n    \"省時省力好幫手\",                 # 兩個條件都過\n]\n\n\ndef mock_agent(task, feedback, attempt):\n    \"\"\"回傳第 attempt 次嘗試的草稿。真實 agent 會根據 feedback 真的去修改;\n    這裡用預先排好的三個草稿來模擬「一圈比一圈好」的過程。\"\"\"\n    draft = _DRAFTS[min(attempt, len(_DRAFTS) - 1)]\n    print(f\"   agent 看到的回饋:「{feedback}」 → 產出:「{draft}」\")\n    return draft\n\n\n# ===========================================================================\n# ★ 本課的全部重點:loop() —— 不到 15 行\n# ===========================================================================\nMAX_ITERS = 5  # 保險絲。沒有它,一個永遠驗不過的任務會讓迴圈跑到天荒地老 (= 燒錢)。\n\n\ndef loop(task):\n    feedback = \"(這是第一圈,還沒有回饋)\"\n\n    for i in range(1, MAX_ITERS + 1):\n        print(f\"\\n[第 {i} 圈]\")\n        anim.fuse(i - 1, MAX_ITERS)\n\n        # --- act:做一步 ---\n        anim.step(\"✎\", \"act:請 agent 產一版草稿\")\n        draft = mock_agent(task, feedback, attempt=i - 1)\n\n        # --- verify:驗一下 ---\n        anim.step(\"🔍\", \"verify:檢查達標沒\")\n        passed, feedback = verify(draft)\n        anim.pause()\n\n        # --- decide:達標就收工,否則帶著回饋再來 ---\n        if passed:\n            print(f\"   ✅ verify 通過 → 收工。成品:「{draft}」\")\n            return draft\n        anim.step(\"↻\", \"decide:沒過,帶著回饋再轉一圈\")\n        print(f\"   ✗ verify 不過:{feedback} → 再來一圈\")\n\n    # 迴圈正常結束 = 圈數燒完都還沒過 = 保險絲斷了\n    print(f\"\\n⚠️  跑了 {MAX_ITERS} 圈仍未達標 —— 保險絲斷,該停下來看看是任務太難還是 verify 太嚴。\")\n    return None\n\n\n# ===========================================================================\n# Demo\n# ===========================================================================\nif __name__ == \"__main__\":\n    anim.from_argv()\n    print(\"=\" * 64)\n    print(f\"任務:寫一句標語,要含「{GOAL_KEYWORD}」且 ≤ {GOAL_MAXLEN} 字\")\n    print(\"=\" * 64)\n\n    result = loop(\"寫一句產品標語\")\n\n    print(\"\\n\" + \"=\" * 64)\n    print(\"你剛剛看到的,就是所有 loop engineering 的心跳:\")\n    print(\"  act(做一步) → verify(驗) → 不過就帶回饋再來 → 過了或燒完才停。\")\n    print(\"把 mock_agent 換成真的 agent、把 verify 換成跑測試,這個骨架原封不動。\")\n    print(\"=\" * 64)\n", "_grader_utils.py": "\"\"\"\n_grader_utils.py —— autograder 的共用零件\n==========================================\n每個 check_exerciseN.py(與 capstone 的 grade_capstone.py)都靠這幾件事:\n  1. load(path)        把學生的檔當模組載進來 (不管它在哪)\n  2. Grader            收集一條條 assert,最後印 計分卡(✅ 過 / ❌ 錯 / ⬜ 待完成)\n  3. run / requirement 把「還沒實作的 TODO」轉成友善訊息,而不是醜 traceback\n\n設計重點:autograder 自己就是一個 verify 閘門 —— 它 import 學生 expose 的函式、\n餵受控輸入、逐項斷言行為,不解析 stdout (脆弱)。這正是本課教的「驗收要客觀」。\n\"\"\"\n\nimport importlib.util\nimport os\nimport sys\n\n\ndef load(path, name=\"student_module\", missing_hint=None):\n    \"\"\"把任意路徑的 .py 當模組載入並回傳。找不到/未完成就友善報錯。\"\"\"\n    path = os.path.abspath(path)\n    if not os.path.exists(path):\n        print(f\"✗ 找不到檔案:{path}\")\n        if missing_hint:\n            print(f\"  {missing_hint}\")\n        print(\"  (或用 --target 指定你的檔案)\")\n        sys.exit(2)\n    spec = importlib.util.spec_from_file_location(name, path)\n    mod = importlib.util.module_from_spec(spec)\n    try:\n        spec.loader.exec_module(mod)\n    except NotImplementedError:\n        print(\"✗ 這支檔案載入時就丟出 NotImplementedError(還有 TODO 沒實作)。\")\n        print(\"  先把標 TODO 的地方補完,再來跑驗收。\")\n        sys.exit(1)\n    return mod\n\n\ndef target_path(default):\n    \"\"\"解析 --target 參數;沒給就用預設。\"\"\"\n    argv = sys.argv\n    if \"--target\" in argv:\n        return argv[argv.index(\"--target\") + 1]\n    return default\n\n\nclass Grader:\n    \"\"\"收集 check 結果,最後 report()。狀態三種:True 過 / False 錯 / 'todo' 待完成。\n    只要不是全部 True,exit code = 1。\"\"\"\n\n    def __init__(self, title):\n        self.title = title\n        self.results = []  # (status, msg);status ∈ {True, False, \"todo\"}\n\n    def check(self, passed, msg):\n        self.results.append((bool(passed), msg))\n        print(f\"  {'✅' if passed else '❌'} {msg}\")\n        return passed\n\n    def todo(self, msg):\n        \"\"\"某個要件還沒實作 —— 不算錯,標成待完成。\"\"\"\n        self.results.append((\"todo\", msg))\n        print(f\"  ⬜ 待完成  {msg}\")\n\n    def check_raises(self, fn, msg):\n        \"\"\"期望 fn() 丟例外 (用來驗『該擋的有擋住』)。\"\"\"\n        try:\n            fn()\n            self.check(False, msg + \"(預期該丟錯,但沒有)\")\n        except Exception:\n            self.check(True, msg)\n\n    def report(self):\n        passed = sum(1 for s, _ in self.results if s is True)\n        todos = sum(1 for s, _ in self.results if s == \"todo\")\n        wrong = sum(1 for s, _ in self.results if s is False)\n        total = len(self.results)\n        print(\"-\" * 56)\n        if passed == total:\n            print(f\"🎉 {self.title}:全部 {total} 項通過!過關了。\")\n            return 0\n        tail = []\n        if wrong:\n            tail.append(f\"{wrong} 項要修(❌)\")\n        if todos:\n            tail.append(f\"{todos} 項還沒做(⬜)\")\n        print(f\"📋 {self.title}:{passed}/{total} 項通過\" + (\",\" + \"、\".join(tail) if tail else \"\") + \"。\")\n        print(\"   照上面的 ❌/⬜ 一項一項補,改完再跑一次。(卡死了再看 solutions/ 參考解答)\")\n        return 1\n\n\ndef requirement(grader, label, fn):\n    \"\"\"跑一個『要件』的檢查。fn 內部自己呼叫 grader.check(...)。\n    若 fn 撞到還沒實作的部分(NotImplementedError)→ 標成 ⬜ 待完成(不中止其他要件);\n    若 fn 執行時爆其他錯 → 記成 ❌ 並附錯誤。這讓學生在多要件的關卡也能看到部分進度。\"\"\"\n    try:\n        fn()\n    except NotImplementedError:\n        grader.todo(f\"{label}(還沒實作)\")\n    except Exception as e:\n        grader.check(False, f\"{label} 執行時出錯:{type(e).__name__}: {e}\")\n\n\ndef run(grade_fn, grader):\n    \"\"\"單一 TODO 的練習用:grade_fn 內若碰到未實作就友善收尾。回傳 exit code。\"\"\"\n    try:\n        grade_fn()\n    except NotImplementedError as e:\n        print(f\"\\n✗ 還有 TODO 沒實作:{e}\")\n        print(\"  把標 TODO 的地方補完,再來驗收。\")\n        return 1\n    return grader.report()\n", "exercise1_minimal_loop.py": "\"\"\"\n練習 1 —— 最小的閉環 (對應第 1 課)\n====================================\n鷹架(verify、agent)都給你了。你只要實作一個函式:loop()。\n\n要實作的 loop(task) 規格:\n  - 最多跑 MAX_ITERS 圈\n  - 每圈呼叫 agent(task, feedback, attempt=i-1) 取得一個 draft\n    (i 從 1 開始;attempt 從 0 開始)\n  - 用 verify(draft) 取得 (passed, feedback)\n  - 一旦 passed 為真 → 立刻回傳該 draft (不要多跑)\n  - 圈數燒完都沒過 → 回傳 None\n  - 第一圈的 feedback 用 \"(第一圈)\" 這類字串即可\n\n完成後驗收:\n    python3 check_exercise1.py\n\"\"\"\n\nGOAL_KEYWORD = \"省時\"\nGOAL_MAXLEN = 12\nMAX_ITERS = 5\n\n\ndef verify(draft):\n    \"\"\"【已給你,不用改】驗證閘門,回傳 (是否通過, 回饋)。\"\"\"\n    if GOAL_KEYWORD not in draft:\n        return False, f\"缺少關鍵字「{GOAL_KEYWORD}」\"\n    if len(draft) > GOAL_MAXLEN:\n        return False, f\"太長了({len(draft)} 字)\"\n    return True, \"通過\"\n\n\ndef agent(task, feedback, attempt):\n    \"\"\"【已給你,不用改】替身 agent。autograder 會用自己的版本替換它。\"\"\"\n    drafts = [\"讓您的生活更美好更精彩又開心\", \"省時又省力生活更輕鬆愉快真好\", \"省時省力好幫手\"]\n    return drafts[min(attempt, len(drafts) - 1)]\n\n\ndef loop(task):\n    # ===================================================================\n    # TODO: 在這裡實作 act → verify → decide 迴圈 (見檔頭規格)\n    # ===================================================================\n    raise NotImplementedError(\"把這行刪掉,實作你的 loop()\")\n", "check_exercise1.py": "\"\"\"autograder:練習 1 (最小閉環)。用法:python3 check_exercise1.py [--target 你的檔.py]\"\"\"\n\nimport os\nimport sys\n\nsys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))\nfrom _grader_utils import Grader, load, run, target_path\n\nmod = load(target_path(os.path.join(os.path.dirname(__file__), \"exercise1_minimal_loop.py\")))\ng = Grader(\"練習 1 · 最小閉環\")\n\n\ndef grade():\n    # --- 1. 成功時:回傳通過 verify 的 draft,且達標就停 ---\n    #   刻意讓「合格答案」出現在第 2 圈、之後又變回不合格 ——\n    #   這樣「跑完才回最後一版」的壞 loop 會抓到不合格的草稿,瞞不過去。\n    calls = {\"n\": 0, \"feedbacks\": []}\n\n    def stub_progressive(task, feedback, attempt):\n        calls[\"n\"] += 1\n        calls[\"feedbacks\"].append(feedback)\n        if attempt == 1:\n            return \"省時好幫手\"            # 第 2 圈:合格\n        return \"太長太長太長太長太長太長\"   # 其餘:不合格(無關鍵字)\n\n    mod.agent = stub_progressive\n    result = mod.loop(\"t\")\n    g.check(result == \"省時好幫手\",\n            f\"成功路徑:達標當下就回傳那一版合格成品(得到 {result!r},應為「省時好幫手」)\")\n    g.check(calls[\"n\"] == 2, f\"達標就停:第 2 圈過關後不再多跑(實際呼叫 agent {calls['n']} 次,應為 2)\")\n\n    # --- 2. 回饋有接線:上一圈 verify 的訊息要餵進下一圈 ---\n    g.check(len(calls[\"feedbacks\"]) >= 2 and \"缺少\" not in calls[\"feedbacks\"][0]\n            and (\"太長\" in calls[\"feedbacks\"][1] or \"缺少\" in calls[\"feedbacks\"][1]),\n            \"回饋接線:上一圈 verify 的訊息有餵進下一圈的 agent\")\n\n    # --- 3. 保險絲:永遠不過時,回傳 None 且剛好燒滿 MAX_ITERS 圈 ---\n    calls2 = {\"n\": 0}\n\n    def stub_always_fail(task, feedback, attempt):\n        calls2[\"n\"] += 1\n        return \"永遠太長永遠太長永遠太長永遠\"\n\n    mod.agent = stub_always_fail\n    result2 = mod.loop(\"t\")\n    g.check(result2 is None, f\"保險絲:永遠驗不過時回傳 None(得到 {result2!r})\")\n    g.check(calls2[\"n\"] == mod.MAX_ITERS, f\"保險絲:剛好跑滿 {mod.MAX_ITERS} 圈才停(實際 {calls2['n']} 圈)\")\n\n\nsys.exit(run(grade, g))\n", "solutions/exercise1_minimal_loop.py": "\"\"\"練習 1 參考解答 —— 卡死再看。對應第 1 課。\"\"\"\n\nGOAL_KEYWORD = \"省時\"\nGOAL_MAXLEN = 12\nMAX_ITERS = 5\n\n\ndef verify(draft):\n    if GOAL_KEYWORD not in draft:\n        return False, f\"缺少關鍵字「{GOAL_KEYWORD}」\"\n    if len(draft) > GOAL_MAXLEN:\n        return False, f\"太長了({len(draft)} 字)\"\n    return True, \"通過\"\n\n\ndef agent(task, feedback, attempt):\n    drafts = [\"讓您的生活更美好更精彩又開心\", \"省時又省力生活更輕鬆愉快真好\", \"省時省力好幫手\"]\n    return drafts[min(attempt, len(drafts) - 1)]\n\n\ndef loop(task):\n    feedback = \"(第一圈)\"\n    for i in range(1, MAX_ITERS + 1):\n        draft = agent(task, feedback, attempt=i - 1)   # act\n        passed, feedback = verify(draft)               # verify\n        if passed:                                     # decide\n            return draft\n    return None\n"};
+const CH01_MD = "# 第 1 章 —— 最小的閉環\n\n> **本章目標**:搞懂 loop engineering 到底是什麼、它和 prompt engineering 差在哪,\n> 並親手寫出一個不到 15 行的閉環:`act → verify → decide`。\n> 做完後你會相信一件事:**所謂「會自己把事情做完的 AI」,核心就是一個帶退出條件的 while 迴圈。**\n>\n> 參考解答:[`lesson1_minimal_loop.py`](../lesson1_minimal_loop.py)(先別看,卡死了再看)\n\n**TL;DR**:loop engineering = 把「決定要不要再 prompt 一次的人」換成一段 `act→verify→decide` 的程式;\n前提是目標必須**機器可判定**。\n\n## 1.1 概念:從「prompt 一次」到「loop 到好」\n\n你在 ChatGPT 打一句話、拿回一個答案,如果不滿意,**是你**再打一句「不對,再短一點」。\n這個「看結果 → 決定要不要再要求一次 → 把意見打回去」的人,就是你。\n\n```\n你 ──prompt──→ agent ──回答──→ 你看了不滿意 ──再 prompt──→ agent ── …\n↑___________________________你一直在迴圈裡當人肉判斷________________________↑\n```\n\n**Loop engineering 就是把迴圈裡那個「你」換成一段程式。** 原作者的定義最精準:\n\n> 「Loop engineering 是把『負責去 prompt agent 的那個人』換成系統本身 —— 你設計一套會自己去 prompt agent 的系統。」\n\n| | Prompt Engineering | Loop Engineering |\n|---|---|---|\n| 你交付的 | 一句好的 prompt | 一個會自己迭代的系統 |\n| 誰決定「再來一次」 | 你(人肉) | 程式(verify + decide) |\n| 何時停 | 你覺得夠了 | 達到可驗證的目標,或撞上限 |\n| 產物 | 一次性的回答 | 可重複、可排程、可稽核的流程 |\n\n### 一個 loop 永遠是這四件事\n\n```\ngoal    明確、機器可判定的目標\nact     做一步(呼叫 agent / 跑命令 / 改檔)\nverify  驗一下:達標了嗎?            ← loop 的靈魂,第 2 章整章在講\ndecide  沒達標就帶回饋再來;達標或燒完就停\n```\n\n**最重要的一句話:目標必須「機器可判定」。**\n「把文案寫好一點」不能做成 loop —— 因為 verify 永遠不知道何時該停。\n「文案要含關鍵字『省時』且 ≤ 12 字」可以 —— 因為一個函式就能客觀回答對或錯。\n把模糊願望翻譯成可驗證的條件,是 loop engineering 的第一個真功夫。\n\n### 內層 vs 外層:你在「包住」agent,不是取代它\n\n如果你學過 agent 的內部運作(例如姊妹課 agent-from-scratch 的 ReAct 迴圈),這裡要釐清一個\n容易混淆的點——其實有**兩層巢狀的迴圈**:\n\n```\n外層(這門課在教的 loop engineering)\n   你的程式:  派工 agent → verify → 沒過帶回饋再派 → 達標/燒完才停\n   └─ 內層(agent 自己的事,你不用管)\n        agent:  reason → act(用工具)→ observe → ……直到它認為自己做完\n```\n\n**內層**是 agent 自己的 reason/act/observe 心跳(Claude Code、Codex 內建,你呼叫一次它就跑完一整輪)。\n**外層**才是你要設計的:把 agent 當一個黑盒子,**包住**它——給任務、收成品、客觀驗收、決定要不要再派一次。\n你不是要改寫 agent 的腦袋,你是要當那個「決定要不要再派工、何時收手」的工頭。這門課從頭到尾講的都是外層。\n\n### 什麼時候「不」該用 loop\n\nloop 不是萬靈丹。它在這些情況是壞主意,硬上只會自動產出垃圾(原因見第 7 章):\n\n| 別用 loop,如果… | 為什麼 |\n|---|---|\n| **驗證很貴或很慢** | 每圈都要跑驗證;驗證若要 10 分鐘或要花錢,迭代成本爆炸 |\n| **驗證不可靠 / 寫不出客觀標準** | verify 是 loop 的地基;地基會騙人,loop 只會更快地騙你(第 7 章) |\n| **任務開放式、沒有「做完」的定義** | 沒有退出條件 = 不是 loop,是無底洞 |\n| **錯一次代價極高且不可逆** | 自動化的代價是偶爾失控;不可逆的事(刪資料、發錢)該留人把關 |\n\n**判準**:有沒有一個**便宜、可靠、客觀**的「做完了沒」檢查?有 → 適合 loop;沒有 → 先別自動化。\n\n## 1.2 動手做\n\n打開 `lesson1_minimal_loop.py`,但建議自己跟著打一遍(手感是這套教材的一半)。\n\n### Step 1:寫 verify —— 先定義「做完」是什麼意思\n\n```python\nGOAL_KEYWORD = \"省時\"\nGOAL_MAXLEN = 12\n\ndef verify(draft):\n    if GOAL_KEYWORD not in draft:\n        return False, f\"缺少關鍵字「{GOAL_KEYWORD}」\"\n    if len(draft) > GOAL_MAXLEN:\n        return False, f\"太長了({len(draft)} 字)\"\n    return True, \"通過\"\n```\n\n**檢查點**:注意 verify 回傳的是 `(是否通過, 回饋)`。\n那個回饋不是裝飾 —— 它是下一圈 agent 唯一知道「上次哪裡錯」的管道。\n\n### Step 2:act —— 一次 agent 呼叫\n\n本課的 `mock_agent` 是個替身,用排好的草稿模擬「一圈比一圈好」。\n真實世界這一步就是一次 LLM 呼叫(見 1.5 怎麼換)。重點是:**它每圈都收到上一圈的 feedback。**\n\n### Step 3:組成迴圈 —— 全部重點就這 10 行\n\n```python\ndef loop(task):\n    feedback = \"(第一圈,還沒有回饋)\"\n    for i in range(1, MAX_ITERS + 1):\n        draft = mock_agent(task, feedback, attempt=i - 1)   # act\n        passed, feedback = verify(draft)                    # verify\n        if passed:                                          # decide\n            return draft\n    return None   # 圈數燒完還沒過 = 保險絲斷\n```\n\n**檢查點**:`MAX_ITERS` 這個保險絲不是可選的。沒有它,一個永遠驗不過的任務會讓\n迴圈跑到天荒地老 —— 在真實世界,那等於一張燒不完的帳單。第 3 章會把這件事講透。\n\n### Step 4:跑起來\n\n```bash\npython3 lesson1_minimal_loop.py\n```\n\n你會看到草稿一圈圈被 verify 打回、帶著回饋修正,第 3 圈通過收工。\n**這個 act→verify→decide 的節奏,之後每一課都不會變 —— 只是零件愈換愈真。**\n\n## 1.3 自我檢查(不看上文,答得出來才算過關)\n\n1. 用一句話說,loop engineering 和 prompt engineering 的根本差別是什麼?\n2. 一個 loop 的四個組成是哪四個?哪一個是靈魂?\n3. 為什麼「把文案寫漂亮」不能做成 loop,「文案含關鍵字 X 且 ≤ N 字」可以?\n4. verify 為什麼要回傳「回饋」而不只是 True/False?\n5. 拿掉 `MAX_ITERS` 會發生什麼事?在真實世界的代價是什麼?\n\n## 1.4 延伸練習\n\n- **換目標**:把 verify 改成「必須包含一個 emoji 且結尾是問號」,看 mock 草稿會不會卡住、\n  以及卡住時 loop 怎麼處理(這逼你體會「verify 太嚴 → 永遠燒到保險絲」)。\n- **真 agent 預習**:如果你做過 agent-from-scratch,把 `mock_agent` 換成那邊的 `llm()` 呼叫,\n  把 verify 的回饋當成 user 訊息餵回去。你會發現整個 loop 骨架一個字都不用改。\n- **想一個你自己的 loop**:寫下一件你最近重複手動 prompt AI 好幾次才弄好的事。\n  它的 goal / verify 各是什麼?能不能機器判定?(答不出 verify = 還不能自動化,這很正常)\n\n## 1.5 動手驗收\n\n讀完別只是點頭——去把 loop 自己寫一遍:打開 [`exercises/exercise1_minimal_loop.py`](../exercises/exercise1_minimal_loop.py),\n補完 `loop()`,跑 `python3 exercises/check_exercise1.py`,全綠才算過這一關。\n\n## 1.6 自我檢查解答\n\n1. prompt = 你交付一句話、看一次結果;loop = 你交付一個會自己迭代的系統,「再來一次」由程式決定。\n2. goal / act / **verify** / decide;verify 是靈魂——它定義「做完」、決定何時停。\n3. 因為 loop 需要 verify 客觀判定對錯;「漂亮」無法,「含 X 且 ≤ N 字」一個函式就能判。\n4. 因為回饋是下一圈 agent 唯一知道「上次哪裡錯」的線索,只回 True/False 它無從改起。\n5. 會無限跑下去;真實代價是一張燒不完的 API 帳單(鬼打牆的 agent 一夜燒光額度)。\n\n---\n\n✅ 過關條件:你能獨立寫出 act→verify→decide 的迴圈,並說清楚為什麼目標必須可被機器判定。\n下一章,我們把 verify 從「一個函式」升級成「跑一個真的命令」,並補上 loop 的其他出口。\n→ [第 2 章:退出條件與驗證閘門](ch02_exit_conditions.md)\n";
+const DIR = "/home/pyodide/ex";
+let pyodide = null;
+
+const $ = id => document.getElementById(id);
+const setStatus = t => $("status").textContent = t;
+
+// 把全文逐行揭露,做出「動畫」效果(不靠 Python 的 time.sleep,以免凍住 UI)
+function reveal(el, text, perLine, done){
+  const lines = text.replace(/\s+$/,"").split("\n");
+  el.textContent = ""; let i = 0;
+  const t = setInterval(()=>{
+    if(i>=lines.length){clearInterval(t); done&&done(); return;}
+    el.textContent += (i?"\n":"") + lines[i++];
+    el.scrollTop = el.scrollHeight;
+  }, perLine);
+}
+
+function writeFiles(){
+  try{ pyodide.FS.mkdirTree(DIR+"/solutions"); }catch(e){}
+  for(const [name, src] of Object.entries(FILES)){
+    pyodide.FS.writeFile(DIR+"/"+name, src);
+  }
+}
+
+// 跑 lesson1,回傳完整 stdout 字串(animate 時 anim.pause 改成 no-op,動畫交給 JS reveal)
+function runLesson(animate){
+  const argv = animate ? "['--animate']" : "[]";
+  const code = `
+import sys, io, os, runpy
+sys.path.insert(0, "${DIR}")
+os.chdir("${DIR}")
+import anim
+anim.pause = lambda *a, **k: None      # 不阻塞瀏覽器;節奏交給前端
+sys.argv = ["lesson1"] + ${argv}
+buf = io.StringIO(); _o = sys.stdout; sys.stdout = buf
+try:
+    src = open("${DIR}/lesson1_minimal_loop.py").read()
+    g = {"__name__":"__main__","__file__":"${DIR}/lesson1_minimal_loop.py"}
+    exec(compile(src, "lesson1", "exec"), g)
+finally:
+    sys.stdout = _o
+buf.getvalue()
+`;
+  return pyodide.runPython(code);
+}
+
+// 把學生程式寫入檔案,跑 check_exercise1.py(真正的 autograder),回傳 {out, code}
+function runCheck(userCode){
+  pyodide.FS.writeFile(DIR+"/exercise1_minimal_loop.py", userCode);
+  const code = `
+import sys, io, os
+sys.path.insert(0, "${DIR}")
+os.chdir("${DIR}")
+# 清掉上一次載入的學生模組,確保抓到最新內容
+for m in list(sys.modules):
+    if m.startswith("student_module") or m=="exercise1_minimal_loop":
+        del sys.modules[m]
+sys.argv = ["check","--target","${DIR}/exercise1_minimal_loop.py"]
+buf = io.StringIO(); _o = sys.stdout; sys.stdout = buf
+rc = 0
+try:
+    src = open("${DIR}/check_exercise1.py").read()
+    g = {"__name__":"__main__","__file__":"${DIR}/check_exercise1.py"}
+    exec(compile(src, "check", "exec"), g)
+except SystemExit as e:
+    rc = e.code if isinstance(e.code, int) else 0
+except Exception as e:
+    import traceback; buf.write("\\n執行錯誤:\\n"+traceback.format_exc())
+    rc = 1
+finally:
+    sys.stdout = _o
+{"out": buf.getvalue(), "rc": rc}
+`;
+  return pyodide.runPython(code).toJs({dict_converter:Object.fromEntries});
+}
+
+async function main(){
+  // 課文先渲染(不需等 Pyodide)
+  $("lesson").innerHTML = marked.parse(CH01_MD);
+  $("code").value = FILES["exercise1_minimal_loop.py"];   // starter
+
+  setStatus("載入 Python 執行環境(Pyodide,約幾 MB)…");
+  pyodide = await loadPyodide();
+  writeFiles();
+  setStatus("就緒 ✓ 全部在你的瀏覽器裡跑,零安裝");
+
+  for(const b of ["runAnim","runPlain","check","solution","reset"]) $(b).disabled=false;
+  $("code").disabled=false;
+
+  $("runAnim").onclick = ()=>{ const o=$("lessonOut"); o.textContent="跑…";
+    try{ reveal(o, runLesson(true), 80); }catch(e){ o.textContent="錯誤:"+e; } };
+  $("runPlain").onclick = ()=>{ const o=$("lessonOut");
+    try{ o.textContent = runLesson(false); o.scrollTop=o.scrollHeight; }catch(e){ o.textContent="錯誤:"+e; } };
+
+  $("check").onclick = ()=>{ const o=$("checkOut"); o.textContent="批改中…";
+    try{ const r=runCheck($("code").value); o.textContent=r.out;
+      o.className = "term " + (r.rc===0?"ok":""); o.scrollTop=o.scrollHeight;
+    }catch(e){ o.textContent="錯誤:"+e; } };
+  $("solution").onclick = ()=>{ $("code").value = FILES["solutions/exercise1_minimal_loop.py"]; };
+  $("reset").onclick = ()=>{ $("code").value = FILES["exercise1_minimal_loop.py"]; $("checkOut").textContent="（補完 TODO 後按「驗收」)"; $("checkOut").className="term"; };
+}
+main().catch(e=>setStatus("啟動失敗:"+e));
+</script>
+</body>
+</html>

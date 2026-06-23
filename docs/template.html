@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loop Engineering — 第 1 課(互動)</title>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--ink:#e6edf3;--mut:#8b949e;--acc:#58a6ff;--ok:#3fb950;--bad:#f85149;--line:#30363d}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 -apple-system,"Noto Sans CJK TC","PingFang TC",Segoe UI,sans-serif}
+  header{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0}
+  header .tag{color:var(--mut);font-size:13px}
+  #status{margin-left:auto;color:var(--mut);font-size:13px}
+  .wrap{display:grid;grid-template-columns:1fr 1fr;gap:0;min-height:calc(100vh - 60px)}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}}
+  .col{padding:22px;overflow:auto}
+  .col.left{border-right:1px solid var(--line)}
+  .md h1{font-size:22px} .md h2{font-size:18px;margin-top:1.6em;border-bottom:1px solid var(--line);padding-bottom:4px}
+  .md h3{font-size:15px;color:var(--acc)} .md code{background:#1f2630;padding:2px 5px;border-radius:4px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+  .md pre{background:#010409;border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto}
+  .md pre code{background:none;padding:0}
+  .md table{border-collapse:collapse;width:100%} .md th,.md td{border:1px solid var(--line);padding:6px 8px;font-size:13px}
+  .md blockquote{border-left:3px solid var(--acc);margin:1em 0;padding:2px 14px;color:var(--mut)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:18px}
+  .card h3{margin:0 0 10px;font-size:15px}
+  button{background:#21262d;color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:8px 14px;font-size:14px;cursor:pointer}
+  button:hover{border-color:var(--acc)} button:disabled{opacity:.5;cursor:wait}
+  button.primary{background:var(--acc);color:#04101f;border-color:var(--acc);font-weight:600}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  textarea{width:100%;height:300px;background:#010409;color:var(--ink);border:1px solid var(--line);border-radius:8px;
+    padding:12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.5;resize:vertical;tab-size:4}
+  .term{background:#010409;border:1px solid var(--line);border-radius:8px;padding:12px;min-height:120px;white-space:pre-wrap;
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.55;overflow:auto;max-height:360px}
+  .hint{color:var(--mut);font-size:12.5px}
+  .ok{color:var(--ok)} .bad{color:var(--bad)} .acc{color:var(--acc)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Loop Engineering from Scratch</h1>
+  <span class="tag">第 1 課 · 最小的閉環(互動切片)</span>
+  <span id="status">啟動中…</span>
+</header>
+<div class="wrap">
+  <div class="col left"><div id="lesson" class="md">載入課文中…</div></div>
+  <div class="col right">
+
+    <div class="card">
+      <h3>▶ 看 Lesson 1 跑起來</h3>
+      <div class="row">
+        <button id="runAnim" class="primary" disabled>▶ 動畫模式</button>
+        <button id="runPlain" disabled>▶ 一般模式</button>
+        <span class="hint">在你瀏覽器裡真的執行 <code>lesson1_minimal_loop.py</code></span>
+      </div>
+      <div id="lessonOut" class="term">（按上面的按鈕)</div>
+    </div>
+
+    <div class="card">
+      <h3>✍️ 動手練習 + 自動評分</h3>
+      <p class="hint">把 <code>loop()</code> 的 TODO 補完(act→verify→decide + 保險絲),按「驗收」讓 autograder 在線上批改。</p>
+      <textarea id="code" spellcheck="false" disabled>載入練習中…</textarea>
+      <div class="row" style="margin-top:10px">
+        <button id="check" class="primary" disabled>✓ 驗收</button>
+        <button id="solution" disabled>看參考解答</button>
+        <button id="reset" disabled>重設</button>
+      </div>
+      <div id="checkOut" class="term">（補完 TODO 後按「驗收」)</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const FILES = /*FILES_JSON*/;
+const CH01_MD = /*CH01_MD*/;
+const DIR = "/home/pyodide/ex";
+let pyodide = null;
+
+const $ = id => document.getElementById(id);
+const setStatus = t => $("status").textContent = t;
+
+// 把全文逐行揭露,做出「動畫」效果(不靠 Python 的 time.sleep,以免凍住 UI)
+function reveal(el, text, perLine, done){
+  const lines = text.replace(/\s+$/,"").split("\n");
+  el.textContent = ""; let i = 0;
+  const t = setInterval(()=>{
+    if(i>=lines.length){clearInterval(t); done&&done(); return;}
+    el.textContent += (i?"\n":"") + lines[i++];
+    el.scrollTop = el.scrollHeight;
+  }, perLine);
+}
+
+function writeFiles(){
+  try{ pyodide.FS.mkdirTree(DIR+"/solutions"); }catch(e){}
+  for(const [name, src] of Object.entries(FILES)){
+    pyodide.FS.writeFile(DIR+"/"+name, src);
+  }
+}
+
+// 跑 lesson1,回傳完整 stdout 字串(animate 時 anim.pause 改成 no-op,動畫交給 JS reveal)
+function runLesson(animate){
+  const argv = animate ? "['--animate']" : "[]";
+  const code = `
+import sys, io, os, runpy
+sys.path.insert(0, "${DIR}")
+os.chdir("${DIR}")
+import anim
+anim.pause = lambda *a, **k: None      # 不阻塞瀏覽器;節奏交給前端
+sys.argv = ["lesson1"] + ${argv}
+buf = io.StringIO(); _o = sys.stdout; sys.stdout = buf
+try:
+    src = open("${DIR}/lesson1_minimal_loop.py").read()
+    g = {"__name__":"__main__","__file__":"${DIR}/lesson1_minimal_loop.py"}
+    exec(compile(src, "lesson1", "exec"), g)
+finally:
+    sys.stdout = _o
+buf.getvalue()
+`;
+  return pyodide.runPython(code);
+}
+
+// 把學生程式寫入檔案,跑 check_exercise1.py(真正的 autograder),回傳 {out, code}
+function runCheck(userCode){
+  pyodide.FS.writeFile(DIR+"/exercise1_minimal_loop.py", userCode);
+  const code = `
+import sys, io, os
+sys.path.insert(0, "${DIR}")
+os.chdir("${DIR}")
+# 清掉上一次載入的學生模組,確保抓到最新內容
+for m in list(sys.modules):
+    if m.startswith("student_module") or m=="exercise1_minimal_loop":
+        del sys.modules[m]
+sys.argv = ["check","--target","${DIR}/exercise1_minimal_loop.py"]
+buf = io.StringIO(); _o = sys.stdout; sys.stdout = buf
+rc = 0
+try:
+    src = open("${DIR}/check_exercise1.py").read()
+    g = {"__name__":"__main__","__file__":"${DIR}/check_exercise1.py"}
+    exec(compile(src, "check", "exec"), g)
+except SystemExit as e:
+    rc = e.code if isinstance(e.code, int) else 0
+except Exception as e:
+    import traceback; buf.write("\\n執行錯誤:\\n"+traceback.format_exc())
+    rc = 1
+finally:
+    sys.stdout = _o
+{"out": buf.getvalue(), "rc": rc}
+`;
+  return pyodide.runPython(code).toJs({dict_converter:Object.fromEntries});
+}
+
+async function main(){
+  // 課文先渲染(不需等 Pyodide)
+  $("lesson").innerHTML = marked.parse(CH01_MD);
+  $("code").value = FILES["exercise1_minimal_loop.py"];   // starter
+
+  setStatus("載入 Python 執行環境(Pyodide,約幾 MB)…");
+  pyodide = await loadPyodide();
+  writeFiles();
+  setStatus("就緒 ✓ 全部在你的瀏覽器裡跑,零安裝");
+
+  for(const b of ["runAnim","runPlain","check","solution","reset"]) $(b).disabled=false;
+  $("code").disabled=false;
+
+  $("runAnim").onclick = ()=>{ const o=$("lessonOut"); o.textContent="跑…";
+    try{ reveal(o, runLesson(true), 80); }catch(e){ o.textContent="錯誤:"+e; } };
+  $("runPlain").onclick = ()=>{ const o=$("lessonOut");
+    try{ o.textContent = runLesson(false); o.scrollTop=o.scrollHeight; }catch(e){ o.textContent="錯誤:"+e; } };
+
+  $("check").onclick = ()=>{ const o=$("checkOut"); o.textContent="批改中…";
+    try{ const r=runCheck($("code").value); o.textContent=r.out;
+      o.className = "term " + (r.rc===0?"ok":""); o.scrollTop=o.scrollHeight;
+    }catch(e){ o.textContent="錯誤:"+e; } };
+  $("solution").onclick = ()=>{ $("code").value = FILES["solutions/exercise1_minimal_loop.py"]; };
+  $("reset").onclick = ()=>{ $("code").value = FILES["exercise1_minimal_loop.py"]; $("checkOut").textContent="（補完 TODO 後按「驗收」)"; $("checkOut").className="term"; };
+}
+main().catch(e=>setStatus("啟動失敗:"+e));
+</script>
+</body>
+</html>
