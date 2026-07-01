@@ -99,7 +99,7 @@ def proxy_trap(seed, n=8):
 
 
 # ===========================================================================
-# 選用:真的 LLM agent(借姊妹課 agent-from-scratch 的 OpenRouter 模式)
+# 選用:真的 LLM agent(OpenAI 相容 API,經 OpenRouter)
 # ===========================================================================
 def try_real_agent_once():
     """示範 loop 怎麼包住一次真實 LLM 呼叫。沒金鑰就友善退回,絕不讓課程當掉。"""
@@ -107,7 +107,7 @@ def try_real_agent_once():
     if not key:
         print("\n(--real:沒偵測到 OPENROUTER_API_KEY → 自動走 noisy stub。)")
         print(" 想看真的:export OPENROUTER_API_KEY=sk-or-... 再加 --real。")
-        print(" 真實路徑長這樣(節錄,完整見姊妹課 agent-from-scratch 第 1 課):")
+        print(" 真實路徑長這樣(節錄):")
         print('   r = requests.post(URL, headers={"Authorization": f"Bearer {key}"},')
         print('                     json={"model": M, "messages": msgs}, timeout=60)')
         print('   reply = r.json()["choices"][0]["message"]["content"]')

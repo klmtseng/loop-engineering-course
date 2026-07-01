@@ -16,7 +16,7 @@
 課程用一個「假 agent」當替身,讓你先看清楚迴圈本身;真正的 agent(Claude Code / Codex /
 你自己的 LLM 呼叫)怎麼接進來,每一課的延伸練習與下面的「接真 agent」一節都有說明。
 
-> 這是 [`agent-from-scratch`](../agent-from-scratch/) 的姊妹課:那門教你**蓋一個 agent**,
+> 這是姊妹課 *agent-from-scratch*(教你**蓋一個 agent**,尚未公開發佈)的續集:
 > 這門教你**把 agent 變成一個會自己跑的系統**。先學會哪個都行,但建議先有一點 agent 概念。
 
 ## 先上課前:你需要會什麼?(30 秒自我檢查)
@@ -31,7 +31,7 @@
 
 - 第 5 章用到**並行(threading)**:沒寫過多執行緒也能懂,章首有「先備繞道」方框。
 - 第 6 章用到**cron 排程**:不熟 cron 的話,章首方框三行講完你需要的部分。
-- 完全沒碰過 AI agent?先翻一下姊妹課 [`agent-from-scratch`](../agent-from-scratch/) 的前四課,再回來。
+- 完全沒碰過 AI agent?先補「LLM 呼叫、工具呼叫、ReAct 迴圈」三個概念(任何入門教材皆可),再回來。
 - **平台**:示範全程在 Linux/Mac 上跑;第 5、6 章的 `git worktree` 與 `cron` 是 Unix 工具,
   Windows 學生請用 WSL,或把那兩課當概念理解(課程的可跑部分仍純標準庫、跨平台)。
 

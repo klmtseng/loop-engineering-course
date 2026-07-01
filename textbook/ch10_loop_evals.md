@@ -57,8 +57,7 @@ python3 lesson10_loop_evals.py
 但 eval 告訴你真相:換一批含難任務的 suite,它的成功率、成本是多少。**一次成功是軼事,一個分佈才是證據。**
 
 > 這正是生態工具 `loop-audit`(評 loop 健康度)、`loop-cost`(估 token 花費)在自動化的事;
-> 也呼應姊妹課 [agent-from-scratch 第 5 課「評測與觀測」](../../agent-from-scratch/)——
-> 不能量測的 agent / loop,不能說它「有用」。
+> 也呼應 agent 評測的一貫原則——不能量測的 agent / loop,不能說它「有用」。
 
 ## 10.4 自我檢查
 

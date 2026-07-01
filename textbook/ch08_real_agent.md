@@ -95,7 +95,7 @@ python3 lesson8_real_agent.py --real     # 選用:接真 LLM(需 OPENROUTER_API_
 這本身就是第 8 章的精神:為失敗設計。有金鑰時,你會看到真實回應 + `usage` 的 token 數,
 那個數字接到第 3 章的 `Budget.charge()`,預算就從「估算」變「實測」。
 
-> **真實路徑的骨架**(完整見姊妹課 agent-from-scratch 第 1 課):
+> **真實路徑的骨架**:
 > `requests.post(...)` → `r.json()["choices"][0]["message"]["content"]` 取回覆、
 > `r.json()["usage"]["total_tokens"]` 取成本。loop 的骨架完全不變,只是 `agent()` 從 stub 換成這次呼叫。
 

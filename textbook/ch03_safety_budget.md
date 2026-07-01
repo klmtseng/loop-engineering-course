@@ -43,8 +43,8 @@ class Budget:
 
 > **本課的 token 是捏造的數字,真實世界怎麼拿?** 每次 LLM API 回應裡都有一個 `usage` 欄位
 > (`prompt_tokens` / `completion_tokens`),把每一圈的 `usage` 累加,就是這個 loop 的**真實**花費——
-> 不用猜。姊妹課 [agent-from-scratch 第 1 課](../../agent-from-scratch/textbook/ch01_minimal_llm.md)
-> 就示範了從回應裡讀 `usage`。把那個數字接到這裡的 `Budget.charge()`,預算就從「估算」變「實測」。
+> 不用猜。任何 OpenAI 相容 API 的回應 JSON 裡都有 `usage` 欄位可直接讀。
+> 把那個數字接到這裡的 `Budget.charge()`,預算就從「估算」變「實測」。
 >
 > 補充:有些聚合服務(如 OpenRouter)的 `usage` 還**直接回傳 `cost`(實際扣款金額)**,
 > 連「token × 單價」都不用自己算——直接把 `cost` 累加進 `Budget` 就是實測花費。
