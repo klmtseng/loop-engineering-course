@@ -135,7 +135,7 @@ def main():
     with open(dest, "w", encoding="utf-8") as f:
         f.write(out)
     print(f"Generated {dest} ({len(out):,} chars; {len(files)} files, {len(meta)} lessons)")
-    assert "/*FILES_JSON*/" not in out and "/*LESSONS_JSON*/" not in out, "placeholder 沒被替換"
+    assert "/*FILES_JSON*/" not in out and "/*LESSONS_JSON*/" not in out, "placeholder was not replaced"
     assert "loadPyodide" in out and "marked.parse" in out
     print("Sanity checks passed")
 

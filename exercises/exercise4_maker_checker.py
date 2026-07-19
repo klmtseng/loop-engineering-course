@@ -7,7 +7,7 @@ Spec for checker(draft) you must implement -- returns (approved, message):
   Three hard criteria, all must pass before approving; list every flaw as feedback:
     1. Must contain an apology word: "sorry" or "apologies"  -> otherwise note "missing apology"
     2. Must contain a clear commitment: draft must include "will"  -> otherwise note "missing commitment"
-    3. Length must be <= 40 characters                           -> otherwise note "too long"
+    3. Length must be <= 60 characters                           -> otherwise note "too long"
   All pass -> return (True, "approve")
   Any flaw -> return (False, "flaw1;flaw2...")
 

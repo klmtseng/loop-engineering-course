@@ -113,7 +113,7 @@ const $ = id => document.getElementById(id);
 const byId = id => LESSONS.find(l => l.id === id);
 const setStatus = t => $("status").textContent = t;
 
-/* ---------- 進度(localStorage) ---------- */
+/* ---------- progress (localStorage) ---------- */
 const PKEY = "loopcourse_passed";
 const passed = () => new Set(JSON.parse(localStorage.getItem(PKEY) || "[]"));
 const markPassed = id => { const s = passed(); s.add(id); localStorage.setItem(PKEY, JSON.stringify([...s])); paintProgress(); };
@@ -126,7 +126,7 @@ function paintProgress(){
   }
 }
 
-/* ---------- 導覽 ---------- */
+/* ---------- navigation ---------- */
 function buildNav(){
   for(const l of LESSONS){
     const o = document.createElement("option");
@@ -176,7 +176,7 @@ function showLesson(L){
   paintProgress();
 }
 
-/* ---------- 終端動畫:逐行揭露 ---------- */
+/* ---------- terminal animation: reveal line by line ---------- */
 function reveal(el, text, perLine){
   const lines = text.replace(/\s+$/,"").split("\n");
   el.textContent = ""; let i = 0;
@@ -187,7 +187,7 @@ function reveal(el, text, perLine){
   }, perLine);
 }
 
-/* ---------- Python 執行 ---------- */
+/* ---------- Python execution ---------- */
 function writeFiles(){
   try{ pyodide.FS.mkdirTree(DIR+"/solutions"); }catch(e){}
   try{ pyodide.FS.mkdirTree("/tmp"); }catch(e){}
@@ -244,12 +244,12 @@ finally:
   return pyodide.runPython(code).toJs({dict_converter: Object.fromEntries});
 }
 
-/* ---------- 事件 ---------- */
+/* ---------- event handlers ---------- */
 function bind(){
   $("runAnim").onclick = ()=>{
     const o = $("lessonOut");
     if(cur.mode === "recorded"){ reveal(o, cur.recording, 60); return; }
-    o.textContent = "跑…";
+    o.textContent = "Running...";
     try{ reveal(o, runLesson(cur, true), 60); }catch(e){ o.textContent = "Error: "+e; }
   };
   $("runPlain").onclick = ()=>{
@@ -258,7 +258,7 @@ function bind(){
     catch(e){ o.textContent = "Error: "+e; }
   };
   $("check").onclick = ()=>{
-    const o = $("checkOut"); o.textContent = "批改中…";
+    const o = $("checkOut"); o.textContent = "Grading...";
     try{
       const r = runCheck(cur, $("code").value);
       o.textContent = r.out; o.scrollTop = o.scrollHeight;

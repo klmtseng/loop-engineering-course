@@ -19,7 +19,7 @@ def checker(draft):
         problems.append("missing apology")
     if "will" not in draft.lower():
         problems.append("missing commitment")
-    if len(draft) > 40:
+    if len(draft) > 60:
         problems.append(f"too long ({len(draft)} chars)")
     if problems:
         return False, ";".join(problems)
