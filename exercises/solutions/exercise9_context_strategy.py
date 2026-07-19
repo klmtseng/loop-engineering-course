@@ -1,4 +1,4 @@
-"""練習 9 參考解答。對應第 9 課。"""
+"""Exercise 9 reference solution. Corresponds to Lesson 9."""
 
 UNIVERSE = list(range(1, 21))
 BASE_TOKENS = 30
@@ -15,6 +15,6 @@ def strat_conversation(tried, history):
 
 
 def strat_spec_in_repo(tried, history):
-    ctx = BASE_TOKENS + SPEC_TOKENS                       # 有界:不隨歷史長大
-    guess = next(n for n in UNIVERSE if n not in tried)   # 用 tried 去重 → 不鬼打牆
+    ctx = BASE_TOKENS + SPEC_TOKENS                       # bounded: does not grow with history
+    guess = next(n for n in UNIVERSE if n not in tried)   # use tried to avoid repeating guesses
     return ctx, guess

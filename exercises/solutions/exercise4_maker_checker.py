@@ -1,11 +1,11 @@
-"""練習 4 參考解答。對應第 4 課。"""
+"""Exercise 4 reference solution. Corresponds to Lesson 4."""
 
 MAX_ITERS = 6
 
 _DRAFTS = [
-    "您的問題我們已經收到了,謝謝。",
-    "不好意思造成困擾,謝謝您的耐心等候與體諒。",
-    "不好意思造成困擾,我們會在 24 小時內回覆您。",
+    "We have received your inquiry. Thank you.",
+    "Sorry for the trouble -- thank you for your patience.",
+    "Sorry for the trouble. We will reply within 24 hours.",
 ]
 
 
@@ -15,19 +15,19 @@ def maker(feedback, attempt):
 
 def checker(draft):
     problems = []
-    if not any(w in draft for w in ("抱歉", "不好意思")):
-        problems.append("缺少道歉字眼")
-    if "會" not in draft:
-        problems.append("沒有承諾下一步")
+    if not any(w in draft.lower() for w in ("sorry", "apologies")):
+        problems.append("missing apology")
+    if "will" not in draft.lower():
+        problems.append("missing commitment")
     if len(draft) > 40:
-        problems.append(f"太長({len(draft)} 字)")
+        problems.append(f"too long ({len(draft)} chars)")
     if problems:
         return False, ";".join(problems)
     return True, "approve"
 
 
 def loop(grader):
-    feedback = "(第一圈)"
+    feedback = "(round 1)"
     for i in range(1, MAX_ITERS + 1):
         draft = maker(feedback, attempt=i - 1)
         approved, comment = grader(draft)

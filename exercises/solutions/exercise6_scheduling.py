@@ -1,4 +1,4 @@
-"""練習 6 參考解答。對應第 6 課。"""
+"""Exercise 6 reference solution. Corresponds to Lesson 6."""
 
 import json
 import time
@@ -15,11 +15,11 @@ class World:
 
 
 def maker(task):
-    return None if task.startswith("deploy") else f"已完成 [{task}]"
+    return None if task.startswith("deploy") else f"completed [{task}]"
 
 
 def checker(task, result):
-    return result is not None and result.startswith("已完成")
+    return result is not None and result.startswith("completed")
 
 
 def log_event(logfile, **fields):

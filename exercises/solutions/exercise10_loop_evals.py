@@ -1,4 +1,4 @@
-"""練習 10 參考解答。對應第 10 課。"""
+"""Exercise 10 reference solution. Corresponds to Lesson 10."""
 
 COST_PER_ITER = 100
 

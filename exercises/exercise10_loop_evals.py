@@ -1,15 +1,16 @@
 """
-練習 10 —— loop 級指標 aggregate (對應第 10 課)
-================================================
-run_task 給你了。你要實作 aggregate():把一批 per-task 結果彙整成 loop 級的四個指標。
+Exercise 10 -- loop-level metrics: aggregate (corresponds to Lesson 10)
+========================================================================
+run_task is provided. You need to implement aggregate(): summarize a batch of per-task
+results into four loop-level metrics.
 
-要實作的 aggregate(records) 規格,records 是 [{status, iters, cost}, ...],回傳 dict:
-  - success_rate   :SUCCESS 筆數 / 總筆數,round 到小數 2 位
-  - mean_iters     :只在 SUCCESS 的 iters 取平均,round 到小數 1 位(沒有 SUCCESS 則 0.0)
-  - escalation_rate:ESCALATED 筆數 / 總筆數,round 到小數 2 位
-  - mean_cost      :所有筆數的 cost 取平均,round 到小數 1 位
+Spec for aggregate(records) you must implement -- records is [{status, iters, cost}, ...] -- returns a dict:
+  - success_rate    : SUCCESS count / total count, rounded to 2 decimal places
+  - mean_iters      : average iters for SUCCESS records only, rounded to 1 decimal place (0.0 if no SUCCESS)
+  - escalation_rate : ESCALATED count / total count, rounded to 2 decimal places
+  - mean_cost       : average cost across all records, rounded to 1 decimal place
 
-完成後驗收:
+Run the autograder when done:
     python3 check_exercise10.py
 """
 
@@ -17,7 +18,7 @@ COST_PER_ITER = 100
 
 
 def run_task(difficulty, max_iters):
-    """【已給你】難度 difficulty 圈內解得開就 SUCCESS,否則 escalate。"""
+    """[Provided] If the task can be solved within 'difficulty' rounds it is SUCCESS; otherwise ESCALATED."""
     if difficulty <= max_iters:
         return {"status": "SUCCESS", "iters": difficulty, "cost": difficulty * COST_PER_ITER}
     return {"status": "ESCALATED", "iters": max_iters, "cost": max_iters * COST_PER_ITER}
@@ -25,6 +26,6 @@ def run_task(difficulty, max_iters):
 
 def aggregate(records):
     # ===================================================================
-    # TODO: 回傳 {success_rate, mean_iters, escalation_rate, mean_cost}(見檔頭規格)
+    # TODO: return {success_rate, mean_iters, escalation_rate, mean_cost} (see spec above)
     # ===================================================================
-    raise NotImplementedError("實作你的 aggregate()")
+    raise NotImplementedError("implement your aggregate()")

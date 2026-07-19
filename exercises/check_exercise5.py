@@ -1,4 +1,4 @@
-"""autograder:練習 5 (平行與隔離)。用法:python3 check_exercise5.py [--target 你的檔.py]"""
+"""autograder: Exercise 5 (parallelism and isolation). Usage: python3 check_exercise5.py [--target yourfile.py]"""
 
 import os
 import sys
@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _grader_utils import Grader, load, run, target_path
 
 mod = load(target_path(os.path.join(os.path.dirname(__file__), "exercise5_parallel_isolation.py")))
-g = Grader("練習 5 · 平行與隔離")
+g = Grader("Exercise 5 - parallelism and isolation")
 
 
 def grade():
@@ -17,17 +17,17 @@ def grade():
         results = mod.run_isolated(workers, base)
 
         g.check(isinstance(results, dict) and set(results) == set(workers),
-                f"回傳 dict 且涵蓋全部 worker(得到 keys={list(results) if isinstance(results, dict) else results})")
+                f"returns dict covering all workers (got keys={list(results) if isinstance(results, dict) else results})")
 
-        # 隔離的鐵證:每個 worker 的內容只能有它自己的字句,且剛好 3 行
+        # isolation proof: each worker's content can only contain its own lines, exactly 3
         all_clean = True
         for w in workers:
             lines = results.get(w, "").strip().split("\n")
             clean = len(lines) == 3 and all(ln.startswith(w + " ") for ln in lines)
             if not clean:
                 all_clean = False
-            g.check(clean, f"{w} 的成品乾淨:3 行且全是自己的(得到 {results.get(w)!r})")
-        g.check(all_clean, "整體隔離成功:沒有任何 worker 的檔被別人污染")
+            g.check(clean, f"{w}'s output is clean: 3 lines all belonging to itself (got {results.get(w)!r})")
+        g.check(all_clean, "overall isolation success: no worker's file was contaminated by another")
 
 
 sys.exit(run(grade, g))

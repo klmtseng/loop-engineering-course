@@ -1,4 +1,4 @@
-"""練習 7 參考解答。對應第 7 課。"""
+"""Exercise 7 reference solution. Corresponds to Lesson 7."""
 
 import random
 
