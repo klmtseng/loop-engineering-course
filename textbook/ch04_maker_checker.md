@@ -59,7 +59,7 @@ maker tried -- it only looks at the output. In production, maker and checker
 often use **different system prompts or even different models** to ensure they
 do not share the same blind spots. One critical trick in the demo:
 **the checker knows three hard rules (must apologize, must commit to a next
-step, max 40 characters) but the maker does not**. That is why the maker is
+step, max 60 characters) but the maker does not**. That is why the maker is
 complacent while the checker forces improvement:
 
 ```python
@@ -67,7 +67,7 @@ def checker(draft):
     problems = []
     if not any(w in draft for w in ("sorry", "apologies")): problems.append("missing apology")
     if "will" not in draft:                                  problems.append("no next-step commitment")
-    if len(draft) > 40:                                      problems.append("too long")
+    if len(draft) > 60:                                      problems.append("too long")
     return (False, ";".join(problems)) if problems else (True, "approve")
 ```
 

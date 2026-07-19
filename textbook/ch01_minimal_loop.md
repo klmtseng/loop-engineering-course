@@ -21,11 +21,8 @@ You --prompt--> agent --answer--> You are not satisfied --prompt again--> agent 
 ^_____________You are always in the loop, acting as the human judge___________________^
 ```
 
-**Loop engineering is replacing that "you" in the loop with a piece of code.** The original author's
-definition is the most precise:
-
-> "Loop engineering is replacing the person who goes and prompts the agent with the system itself --
-> you design a system that goes and prompts the agent on its own."
+**Loop engineering is replacing that "you" in the loop with a piece of code.**
+The core idea: you stop prompting the agent yourself, and instead design a system that prompts it on its own.
 
 | | Prompt Engineering | Loop Engineering |
 |---|---|---|
@@ -45,7 +42,7 @@ decide  If not, loop back with feedback; if yes, or if the budget is gone, stop
 
 **The single most important sentence: the goal must be machine-checkable.**
 "Make the copy better" cannot be turned into a loop -- verify would never know when to stop.
-"The copy must contain the keyword 'save time' and be at most 12 characters long" works --
+"The copy must contain the keyword 'save-time' and be at most 20 characters long" works --
 because a function can give an objective yes or no.
 Translating a vague wish into a verifiable condition is the first real skill in loop engineering.
 

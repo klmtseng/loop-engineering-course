@@ -1,4 +1,4 @@
-# Loop Engineering from Scratch — Teaching an AI to Finish, Verify, and Stop on Its Own
+# Loop Engineering from Scratch: Teaching an AI to Finish, Verify, and Stop on Its Own
 
 > 🌐 **Interactive learning online (runs in your browser, no install needed)**:<https://klmtseng.github.io/loop-engineering-course/>
 > (Currently covers Lesson 1 as an interactive slice; more lessons coming soon.)
@@ -8,7 +8,7 @@
 > until the goal is met or a limit is hit."** In one sentence: replace the human who keeps watching
 > and deciding whether to prompt again with a piece of code.
 
-This course uses seven single-file Python scripts, starting from an `act->verify->decide` loop
+This course uses ten Python scripts -- one lesson = one core file (plus an optional shared anim.py for the --animate view) -- starting from an `act->verify->decide` loop
 under 15 lines, and builds up to an unattended system that "wakes itself up, runs its own checks,
 and only calls you when it cannot handle something," before exposing the most dangerous truth in this
 field: **verify is just a proxy metric, and agents will game it.**
@@ -172,7 +172,7 @@ The loop skeleton needs no changes at all -- that is precisely the point of this
 
 ## Design Principles
 
-1. **One lesson, one file, one concept** -- every lesson runs independently; the comments are the lecture notes
+1. **One lesson, one core concept** -- every lesson runs independently; the comments are the lecture notes
 2. **Zero dependencies, zero API keys** -- standard library throughout; the stand-in agent is explained clearly before showing you how to replace it
 3. **Honest** -- a mock is a mock, a simulation is a simulation; where `git worktree` is the right tool, nothing pretends otherwise
 4. **Skeleton first** -- internalize act->verify->decide as muscle memory; patterns like "PR until green" are just variations on that skeleton

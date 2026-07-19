@@ -136,4 +136,4 @@ Passing condition: you can explain why verify is a proxy metric, name the three
 cheating techniques, and write a verify that uses hold-out + random inputs to
 make gaming it hard.
 -> Back to [README](../README.md), or enter [`capstone/`](../capstone/) to
-assemble all seven lessons into your own loop.
+assemble all ten lessons into your own loop.

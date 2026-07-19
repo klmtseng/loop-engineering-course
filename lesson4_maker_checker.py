@@ -52,7 +52,7 @@ import anim
 #   maker does not):
 #   1. Must contain an apology word ("sorry" or "apologies")
 #   2. Must give a clear next step (commitment containing "will")
-#   3. Must be at most 40 characters
+#   3. Must be at most 60 characters
 # The maker is only told "write a polite customer-service reply" -- it does
 # not know these three rules, so it will think any casual reply is fine.
 # That is precisely why we need an independent checker.
@@ -89,8 +89,8 @@ def checker(draft):
         problems.append("missing apology")
     if "will" not in draft.lower():
         problems.append("no next-step commitment")
-    if len(draft) > 40:
-        problems.append(f"too long ({len(draft)} chars, must be <= 40)")
+    if len(draft) > 60:
+        problems.append(f"too long ({len(draft)} chars, must be <= 60)")
     if problems:
         return False, ";".join(problems)
     return True, "approve"

@@ -141,8 +141,8 @@ zh-tw/ vs English textbook. Sample: ch01/ch04/ch07, 5 technical sentences each.
 
 | Pattern | Files found (non-zh-tw) | Assessment |
 |---|---|---|
-| `ai-mac` | 0 | PASS |
-| `/home/ai-mac` | 0 | PASS |
+| machine username | 0 | PASS |
+| machine home path | 0 | PASS |
 | `klm.tseng` (email) | 0 | PASS |
 | `klmtseng` | README.md line 3 (GitHub URL), docs/template.html lines 70,102 | PASS — these are the intended public GitHub username in deployment URLs, not private data |
 | `/home/` (non-pyodide) | 0 | PASS |
