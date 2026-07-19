@@ -1,4 +1,4 @@
-"""Capstone 參考解答。把六課零件組成一個能放生的維運 loop。"""
+"""Capstone reference solution. Assembles components from all six lessons into a deployable maintenance loop."""
 
 import json
 import sys
@@ -13,7 +13,7 @@ class World:
         self.executed = 0
 
 
-# 要件 1
+# Requirement 1
 class Budget:
     def __init__(self, max_iters, max_tokens):
         self.max_iters = max_iters
@@ -29,37 +29,37 @@ class Budget:
         self.used_tokens += tokens
 
 
-# 要件 2
+# Requirement 2
 def log_event(logfile, **fields):
     fields["ts"] = time.strftime("%H:%M:%S")
     with open(logfile, "a") as f:
         f.write(json.dumps(fields, ensure_ascii=False) + "\n")
 
 
-# 要件 3
+# Requirement 3
 def checker(task, result):
-    return result is not None and result.startswith("已完成")
+    return result is not None and result.startswith("completed")
 
 
-# 要件 6(隔離)
+# Requirement 6 (isolation)
 def worker_dir(base, name):
     import os
     return os.path.join(base, f"wt-{name}")
 
 
 def task_agent(task):
-    """每個任務的 agent:回一個覆蓋率。deploy* 高風險永遠到不了 GOAL → 會被 escalate。"""
+    """Per-task agent: returns a coverage value. deploy* high-risk tasks never reach GOAL -> escalated."""
     return (lambda attempt: 50) if task.startswith("deploy") else (lambda attempt: 95)
 
 
-# 要件 4 + 5(整合要件 7:每個任務用 solve_task / best-so-far 處理)
+# Requirements 4 + 5 (integrates Req 7: each task is processed via solve_task / best-so-far)
 def run(world, logfile, budget, level="L3"):
     while world.todos and budget.can_continue():
         task = world.todos.pop(0)
         budget.charge(50)
-        status, best = solve_task(task_agent(task), max_iters=4)   # ← 真的用到 best-so-far
+        status, best = solve_task(task_agent(task), max_iters=4)   # <- actually uses best-so-far
         if status == "SUCCESS":
-            if level != "L1":               # 要件 5:L1 不真的執行副作用
+            if level != "L1":               # Req 5: L1 does not execute side effects
                 world.executed += 1
             world.done.append(task)
             log_event(logfile, event="done", task=task, best=best, executed=(level != "L1"))

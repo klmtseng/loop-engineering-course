@@ -1,38 +1,36 @@
-# Capstone —— 總驗收:自己組一個能放生的維運 loop
+# Capstone -- Final Assessment: Build a Loop You Can Deploy
 
-前六課每課只練一個零件。這個 capstone 沒有鷹架——**你要把零件自己組起來**,
-做出一個「夜間維運 loop」:它撈一個待辦佇列,逐件處理、獨立驗收、記帳記錄,
-預算用罄就 escalate,而且能被 cron 用 `--once` 呼叫。
+Each earlier lesson practiced exactly one component. This capstone has no scaffolding -- **you assemble the components yourself** to build a "nightly maintenance loop": it polls a pending-work queue, handles each item, verifies independently, logs everything, escalates when budget is exhausted, and can be invoked by cron with `--once`.
 
-## 怎麼做
+## How to Start
 
 ```bash
-cp my_loop_template.py my_loop.py     # 複製範本,在 my_loop.py 裡實作
+cp my_loop_template.py my_loop.py     # copy the template, implement in my_loop.py
 nano my_loop.py
-python3 grade_capstone.py             # 驗收(預設驗 my_loop.py)
+python3 grade_capstone.py             # run the grader (grades my_loop.py by default)
 ```
 
-## 你的 my_loop.py 必須具備的六項要件
+## Six Requirements Your my_loop.py Must Satisfy
 
-評分器靠下列「介面」做行為測試,所以請照簽名實作(內部怎麼寫隨你):
+The grader uses the following **interfaces** for behavioral testing, so implement them with these signatures (internals are up to you):
 
-| # | 要件 | 介面 | 通過條件 |
+| # | Requirement | Interface | Pass Condition |
 |---|---|---|---|
-| 1 | **保險絲 + 預算** | `Budget(max_iters, max_tokens)`,有 `.can_continue()`、`.charge(tokens)` | 圈數或 token 任一到頂就不能繼續 |
-| 2 | **run-log** | `log_event(logfile, **fields)` | 每次 append 一行 JSONL,**不覆蓋** |
-| 3 | **獨立 checker** | `checker(task, result) -> bool` | 好結果 True、壞結果 False |
-| 4 | **主迴圈(整合要件 7)** | `run(world, logfile, budget, level)` | 逐件處理:**每個任務用 `solve_task(task_agent(task), …)` 跑**(別繞過 best-so-far),SUCCESS→done、FAIL→escalate;預算用罄要 escalate;回傳含 `done`/`escalated`/`budget_exhausted` 的 dict |
-| 5 | **L1 安全** | `run(..., level="L1")` | L1 時不真的執行副作用(world 的 `executed` 計數維持 0) |
-| 6 | **可隔離 + 可排程** | `worker_dir(base, name)` 給每 worker 不同路徑;`python3 my_loop.py --once` 跑一拍後 exit 0 | 路徑互異且在 base 下;`--once` 正常退出 |
-| 7 | **對 noisy agent 穩健** | `solve_task(agent, max_iters)` —— 用 best-so-far 迭代一個會退步的 agent | 中途達標即記住;回傳歷史最佳而非末圈;從未達標回 FAIL+最佳 |
+| 1 | **Fuse + Budget** | `Budget(max_iters, max_tokens)` with `.can_continue()` and `.charge(tokens)` | Can no longer continue when either iter count or token count is exhausted |
+| 2 | **run-log** | `log_event(logfile, **fields)` | Appends one JSONL line each call, **never overwrites** |
+| 3 | **Independent checker** | `checker(task, result) -> bool` | Returns True for good results, False for bad results |
+| 4 | **Main loop (integrates Req 7)** | `run(world, logfile, budget, level)` | Handles each task using `solve_task(task_agent(task), ...)` (do not bypass best-so-far); SUCCESS -> done, FAIL -> escalate; budget exhausted -> escalate; returns dict with `done`/`escalated`/`budget_exhausted` |
+| 5 | **L1 safety** | `run(..., level="L1")` | In L1, no side effects are actually executed (world's `executed` counter stays at 0) |
+| 6 | **Isolation + scheduling** | `worker_dir(base, name)` gives each worker a distinct path; `python3 my_loop.py --once` runs one tick then exits 0 | Paths are distinct and under base; `--once` exits cleanly |
+| 7 | **Robust against noisy agents** | `solve_task(agent, max_iters)` -- uses best-so-far to iterate an agent that may regress | Remembers peak mid-run; returns historical best, not last-round value; returns FAIL+best if goal never reached |
 
-## 提示
+## Hints
 
-- 要件 1/2 直接搬第 3 課;要件 3 搬第 4 課;要件 4/5 是第 3、6 課的合體;
-  要件 6 的隔離搬第 5 課、排程搬第 6 課;**要件 7 搬第 8 課的 best-so-far**。
-- 要件 7 的 `solve_task(agent, max_iters)`:`agent(attempt)` 回一個覆蓋率(int),達標線 = `GOAL`(90);
-  每圈記住歷史最佳,best ≥ GOAL 就回 `("SUCCESS", best)`,燒完回 `("FAIL", best)`。
-  這是真正需要你**設計判斷**的一題:真 agent 會退步,只信末圈會把好結果丟掉。
-- `world` 物件由評分器提供,長這樣:有 `todos`(list)、`done`(list)、`escalated`(list)、
-  `executed`(int 計數器,你每真的執行一次副作用就 +1)。範本裡有給一個可用的 `World`。
-- 卡死了看 `solution_my_loop.py`(看完自己重打一遍)。
+- Requirements 1/2 come directly from Lesson 3; Req 3 from Lesson 4; Reqs 4/5 are Lessons 3+6 combined;
+  Req 6's isolation from Lesson 5, scheduling from Lesson 6; **Req 7 comes from Lesson 8's best-so-far**.
+- Req 7's `solve_task(agent, max_iters)`: `agent(attempt)` returns a coverage value (int), goal = `GOAL` (90);
+  track the historical best each round; when best >= GOAL return `("SUCCESS", best)`; when fuse burns out return `("FAIL", best)`.
+  This is the one step that requires **design judgment**: real agents regress, trusting only the last round throws away good results.
+- The `world` object is provided by the grader and has: `todos` (list), `done` (list), `escalated` (list),
+  `executed` (int counter, increment by 1 each time you actually execute a side effect). The template includes a usable `World`.
+- Stuck? Look at `solution_my_loop.py` (read it, then type it out yourself from scratch).
