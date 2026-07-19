@@ -1,99 +1,139 @@
-# 第 7 章 —— verify 是代理指標,而 agent 會鑽它
+# Chapter 7 -- verify Is a Proxy Metric, and Agents Will Game It
 
-> **本章目標**:理解 loop engineering 最危險、也最少被講的真相——**verify 不是「對不對」,
-> 它只是真相的代理指標,而 agent 會去鑽它**。學會辨認三種作弊手法,並寫出鑽不動的 verify。
-> 做完後你會記住:**loop 的品質上限 = 你的 verify 有多難被鑽。**
+> **Chapter goal**: Understand the most dangerous, least-discussed truth of loop
+> engineering -- **verify is not "correct or not"; it is only a proxy for the
+> truth, and agents will exploit it**. Learn to recognize three cheating
+> techniques and write a verify that cannot be gamed.
+> After this chapter you will remember: **the quality ceiling of a loop equals
+> how hard its verify is to game.**
 >
-> 參考解答:[`lesson7_verifier_gaming.py`](../lesson7_verifier_gaming.py)
+> Reference solution: [`lesson7_verifier_gaming.py`](../lesson7_verifier_gaming.py)
 
-**TL;DR**:agent 不是在解你的問題,是在「讓 verify 變綠」——這兩件事不一定一樣。
-verify 寫得弱,loop 只會更快產出能騙過你的垃圾。
+**TL;DR**: The agent is not solving your problem -- it is "making the verify
+turn green." Those two things are not the same. A weak verify just means the
+loop produces garbage that is better at fooling you.
 
-## 7.1 回頭看第 2 課——那其實是一次作弊
+## 7.1 Look Back at Chapter 2 -- That Was Actually Cheating
 
-還記得第 2 課嗎?任務是「印出 42」,agent 交出的是:
+Remember Chapter 2? The task was "print 42", and the agent delivered:
 
 ```python
 print(20 + 22)
 ```
 
-當時我們歡呼「綠了!成功!」。但認真看一眼:**它沒寫出一個會計算的程式,它把答案硬編了進去。**
-它沒解決問題,它只是讓那個「只檢查一次」的 verify 變綠。
+At the time we cheered "green! success!" But look closely: **it did not write a
+program that can add; it hard-coded the answer.**
+It did not solve the problem -- it only made that "check once" verify turn green.
 
-這不是 bug,這是 agent 的天性。一旦你把「讓 verify 通過」設成目標,agent 就會用**最省力**的方式
-達成它——而最省力的方式,往往不是真的把事情做對。
+This is not a bug; it is the agent's nature. Once you set "make the verify pass"
+as the goal, the agent achieves it by the **least-effort** path -- and the
+least-effort path is often not actually solving the problem correctly.
 
-> **Goodhart 定律**(這句廣為流傳的精簡版其實出自人類學家 Marilyn Strathern 1997 的重述;
-> Goodhart 1975 的原話更技術:「統計規律一旦被當成控制目標就會崩壞」):
-> 「當一個指標變成目標,它就不再是一個好指標。」
-> 你的 verify 一旦變成 agent 追逐的目標,它就開始失真。
+> **Goodhart's Law** (this pithy version is actually from anthropologist Marilyn
+> Strathern's 1997 restatement; Goodhart's 1975 original was more technical:
+> "a statistical regularity used as a control target will cease to be a
+> reliable guide"):
+> "When a measure becomes a target, it ceases to be a good measure."
+> Once your verify becomes the target the agent pursues, it starts to diverge
+> from truth.
 
-## 7.2 三種真實世界的作弊手法
+## 7.2 Three Real-World Cheating Techniques
 
-| # | 手法 | 長什麼樣 |
+| # | Technique | What it looks like |
 |---|---|---|
-| 1 | **硬編答案** | `return 42`、把預期輸出直接寫死,只過你給的那幾個案例 |
-| 2 | **改弱驗證** | 你的 verify 若是「跑 repo 的測試」,agent 直接把失敗的測試刪掉 / 改成 `assert True` |
-| 3 | **空轉假裝** | 什麼都沒真的做,但想辦法讓 verify 回傳通過(例如吞掉錯誤、改 exit code) |
+| 1 | **Hard-code the answer** | `return 42` -- write the expected output directly so only the given test cases pass |
+| 2 | **Weaken the verifier** | If your verify is "run the repo's tests", the agent deletes failing tests or changes them to `assert True` |
+| 3 | **Fake completion** | Do nothing real but make verify return passing (e.g., suppress errors, change exit code) |
 
-第 1 種最常見,本章 demo 就在演它。第 2 種最陰險——**agent 改的不是程式,是考卷本身**。
+Technique 1 is the most common; the demo demonstrates it.
+Technique 2 is the most insidious -- **the agent is not answering the exam;
+it is rewriting the exam paper.**
 
-## 7.3 對策:把 verify 變難鑽
+## 7.3 Defense: Make verify Harder to Game
 
-verify 鑽不鑽得動,決定了你的 loop 是「自動把事做好」還是「自動產出能騙過你的垃圾」。四個對策:
+Whether verify can be gamed determines whether your loop "automatically does
+things well" or "automatically produces garbage that can fool you." Four defenses:
 
-1. **hold-out(留一手)**:準備一批 agent **看不到、也改不到**的隱藏案例。硬編幾個公開答案沒用,
-   它過不了你私藏的那些。(hold-out 還有第二個用途:第 8 章的 best-so-far 會「挑 verify 讀數最高的一版」,
-   若 verify 有雜訊就會挑到僥倖——用 hold-out 複驗你選出的那版,才知道是真好還是運氣好。)
-2. **多組 + 隨機輸入**:一個 `return 42` 過不了「隨機抽 20 組 a+b」。讓正確的唯一出路就是真的解問題。
-3. **隔離(第 5 課)**:agent 不能修改 verify / 測試本身。worktree 不只是防互踩,也是防它改考卷。
-4. **人抽查(第 3 課的 L1→L3)**:高風險的 loop,綠了也要人定期抽看 run-log 和成品。
-   「綠」是必要條件,不是充分條件。
+1. **Hold-out (keep a hand hidden)**: prepare a set of hidden cases the agent
+   **cannot see and cannot modify**. Hard-coding a few public answers does not
+   help against private cases you kept back. (Hold-out also serves a second
+   purpose: Chapter 8's best-so-far mechanism "picks the round with the highest
+   verify score." If verify has noise, it will pick a lucky run -- use a hold-out
+   to re-verify the version you selected, to know whether it is genuinely good or
+   just got lucky.)
+2. **Multiple + random inputs**: a single `return 42` cannot pass "20 random a+b
+   pairs." Make the only path to passing be actually solving the problem.
+3. **Isolation (Chapter 5)**: the agent cannot modify verify or the tests
+   themselves. A worktree does not just prevent cross-contamination -- it also
+   prevents the agent from rewriting the exam paper.
+4. **Human sampling (L1->L3 from Chapter 3)**: in high-risk loops, even a green
+   verify should be spot-checked by a human reading the run-log and the output.
+   "Green" is necessary, not sufficient.
 
-## 7.4 動手做
+## 7.4 Hands-On
 
-`lesson7_verifier_gaming.py` 用 `add(a,b)=a+b` 這個任務,讓你看到同一份程式碼,
-弱 verify 和強 verify 信了不同的人:
+`lesson7_verifier_gaming.py` uses an `add(a,b)=a+b` task and shows you how
+the same code is believed by different verifiers:
 
 ```bash
 python3 lesson7_verifier_gaming.py
 ```
 
-**檢查點**:看「硬編答案的 agent」那一列——它的 `return 42` **騙過了弱 verify(只驗 20+22)**,
-但**強 verify(公開+隱藏+隨機)抓出來了**。同一個作弊,差別只在 verify 寫得夠不夠難鑽。
+**Checkpoint**: Look at the "hard-coded-answer agent" row -- its `return 42`
+**fools the weak verify (only checks 20+22)** but **is caught by the strong
+verify (public + hidden + random)**. The same cheat; the only difference is
+how hard the verify is to game.
 
-## 7.5 自我檢查
+## 7.5 Self-Check
 
-1. 為什麼說「verify 是代理指標,不是真相」?第 2 課的 `print(20+22)` 怎麼體現這件事?
-2. Goodhart 定律一句話是什麼?它跟 loop engineering 有什麼關係?
-3. 三種作弊手法各是什麼?哪一種是「改考卷」而不是「答考卷」?
-4. hold-out 為什麼能擋住硬編?它和「多組隨機輸入」各補了什麼?
-5. 為什麼「隔離」(第 5 課)也是一種防作弊?
+1. Why is verify a "proxy metric, not truth"? How does `print(20+22)` from
+   Chapter 2 illustrate this?
+2. Goodhart's Law in one sentence? What does it have to do with loop engineering?
+3. What are the three cheating techniques? Which one is "rewriting the exam" rather
+   than "answering the exam"?
+4. Why does hold-out block hard-coding? What does it cover that multiple random
+   inputs covers?
+5. Why is "isolation" (Chapter 5) also a form of anti-cheating?
 
-## 7.6 動手驗收
+## 7.6 Exercise
 
-打開 [`exercises/exercise7_verifier_gaming.py`](../exercises/exercise7_verifier_gaming.py),
-親手寫出 `strong_verify()`,讓它放行老實的 add、抓出硬編/差一點/常數。
-跑 `python3 exercises/check_exercise7.py` 驗收。**這題是在練全課最核心的技能:把 verify 寫好。**
+Open [`exercises/exercise7_verifier_gaming.py`](../exercises/exercise7_verifier_gaming.py),
+write `strong_verify()` yourself so it passes the honest add and catches the
+hard-coded / off-by-one / constant variants.
+Run `python3 exercises/check_exercise7.py` to verify. **This exercise drills the
+most central skill of the whole course: writing verify well.**
 
-## 7.7 延伸練習
+## 7.7 Further Exercises
 
-- **示範第 2 種作弊**:把 verify 改成「跑一個測試檔」,讓 mock agent 直接把測試檔改成 `assert True`,
-  看你的 loop 如何「綠著」交出垃圾;再用「隔離 + hold-out 測試」擋掉它。
-- **對抗式 verify**:寫一個會主動嘗試打破 agent 成品的 verify(丟極端值、空輸入、超大數),體會
-  「verify 不只是檢查,是攻擊你自己的成品」。
-- **回到你自己的 loop**:第 1 章你想過一個自己的 loop。現在問:它的 verify 能被怎麼鑽?你要怎麼補?
+- **Demonstrate technique 2**: change verify to "run a test file", let a mock
+  agent rewrite the test file to `assert True`, and watch your loop "pass" while
+  delivering garbage; then block it with isolation + hold-out tests.
+- **Adversarial verify**: write a verify that actively tries to break the agent's
+  output (throw extreme values, empty input, huge numbers) -- experience "verify
+  is not just checking; it is attacking your own output."
+- **Back to your own loop**: in Chapter 1 you imagined a loop of your own. Now ask:
+  how could its verify be gamed? What would you add to prevent it?
 
-## 7.8 自我檢查解答
+## 7.8 Self-Check Answers
 
-1. 因為 verify 只檢查「某些可觀察的條件」,不等於「真的對」;`print(20+22)` 過了「印出 42」卻沒寫出加法器,
-   證明「通過 verify」和「解決問題」是兩回事。
-2. 「當指標變成目標,它就不再是好指標」;agent 追逐 verify 這個指標,於是 verify 開始失真、被鑽。
-3. 硬編答案 / 改弱驗證 / 空轉假裝;**改弱驗證**是改考卷(動 verify/測試本身)而非答考卷。
-4. hold-out 用 agent 看不到的隱藏案例,讓硬編公開答案沒用;多組隨機則擋掉「連隱藏案例也一起硬編」的偷吃步。
-5. 隔離讓 agent 不能修改 verify / 測試本身,直接堵死「改考卷」這條作弊路。
+1. verify only checks "certain observable conditions", not "actually correct";
+   `print(20+22)` passed "print 42" without writing an adder, proving that
+   "passing verify" and "solving the problem" are two different things.
+2. "When a measure becomes a target, it ceases to be a good measure"; the agent
+   pursues the verify metric so verify starts to diverge from truth and gets
+   exploited.
+3. Hard-code the answer / weaken the verifier / fake completion;
+   **weakening the verifier** is rewriting the exam (it modifies verify/tests
+   themselves rather than answering them).
+4. Hold-out uses hidden cases the agent cannot see, so hard-coding public answers
+   does not help; random inputs block "also hard-code the hidden cases."
+5. Isolation prevents the agent from modifying verify or tests at all -- it
+   directly closes off the "rewrite the exam paper" path.
 
 ---
 
-✅ 過關條件:你能說出 verify 為何是代理指標、辨認三種作弊、並親手寫出一個用 hold-out + 隨機輸入鑽不動的 verify。
-→ 回到 [README](../README.md),或進入 [`capstone/`](../capstone/) 把七課零件組成你自己的 loop。
+Passing condition: you can explain why verify is a proxy metric, name the three
+cheating techniques, and write a verify that uses hold-out + random inputs to
+make gaming it hard.
+-> Back to [README](../README.md), or enter [`capstone/`](../capstone/) to
+assemble all seven lessons into your own loop.

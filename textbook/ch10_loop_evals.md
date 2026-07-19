@@ -1,89 +1,125 @@
-# 第 10 章 —— loop 級 evals
+# Chapter 10 -- Loop-Level Evals
 
-> **本章目標**:跳出「單一任務驗一次」的視角,學會對一整批任務評估一個 loop 的整體表現——
-> 成功率、平均圈數、escalation 率、平均成本——並用 A/B 比較不同 loop 設定來做上線決策。
-> 做完後你會記住:**單任務 verify 綠了,不代表這個 loop 好。**
+> **Chapter goal**: Step back from "verify one task once" and learn to evaluate
+> the overall performance of a loop across an entire batch of tasks -- success
+> rate, mean iterations, escalation rate, mean cost -- and use A/B comparison
+> of different loop configurations to make deployment decisions.
+> After this chapter you will remember: **a single task verify turning green
+> does not mean the loop is good.**
 >
-> 參考解答:[`lesson10_loop_evals.py`](../lesson10_loop_evals.py)
+> Reference solution: [`lesson10_loop_evals.py`](../lesson10_loop_evals.py)
 
-**TL;DR**:loop 的好壞要對一個 task suite 量四個數字(成功率/平均圈數/escalation/成本),
-A/B 不同設定再決定上線哪一版——這就是 loop-audit / loop-cost 在做的事。
+**TL;DR**: A loop's quality must be measured by running it on a whole task
+suite and measuring four numbers (success rate / mean iters / escalation /
+cost), A/B-testing different configurations, then deciding which to deploy --
+this is what `loop-audit` / `loop-cost` automate.
 
-## 10.1 概念:verify 綠 ≠ loop 好
+## 10.1 Concept: verify Green != Loop Good
 
-前九課都在問「這一次、這個任務,過了沒?」。但要決定一個 loop **值不值得上線**,
-那是個聚合問題:把它丟給**一整批**真實任務,它整體表現如何?懂 agent 的人用 eval 思考——
-loop 也要有自己的 eval。四個最基本的指標:
+Every earlier chapter asked "did this one task, this one time, pass?" But
+deciding whether a loop is **worth deploying** is an aggregation question:
+throw a whole batch of realistic tasks at it; how does it perform overall?
+People who think in agent terms think in eval terms -- a loop needs its own
+eval. Four basic metrics:
 
-| 指標 | 意思 | 越好的方向 |
+| Metric | Meaning | Better direction |
 |---|---|---|
-| **成功率 success_rate** | 整批裡 loop 自己搞定的比例 | 越高越好 |
-| **平均圈數 mean_iters** | 成功時平均跑幾圈 | 越少越快、越省 |
-| **escalation 率** | 被迫叫人的比例 | 越低越自動 |
-| **平均成本 mean_cost** | 每個任務平均燒多少 token | 越低越省 |
+| **success_rate** | Fraction of the batch the loop handles on its own | Higher is better |
+| **mean_iters** | Mean number of rounds for successful runs | Lower is faster and cheaper |
+| **escalation rate** | Fraction of tasks forced to a human | Lower is more autonomous |
+| **mean_cost** | Mean tokens burned per task | Lower is cheaper |
 
-## 10.2 概念:指標只有在「比較」時才有意義
+## 10.2 Concept: Metrics Only Mean Something In Comparison
 
-**先談一個容易做錯的前提:agent 是隨機的(第 8 課),所以每個任務不能只跑一次。**
-否則你量到的是運氣。正確做法是**每個任務重複跑 k 次、看分佈、並標上 n(樣本數)**。
-`lesson10` 對 10 個任務、每個重複 20 次(n=200)跑兩種 max-iter:
-
-```
-設定          成功率(n)        平均圈數*   escalation   平均成本
-max_iters=3   0.48 (n=200)    2.1         0.52         254.5
-max_iters=8   0.89 (n=200)    3.9         0.11         432.0
-* 平均圈數僅計「成功案例」——要和 escalation 率併看,否則會把「很快放棄」誤讀成「很有效率」。
-```
-
-**放寬保險絲(3→8):成功率 0.48→0.89、escalation 0.52→0.11,但平均成本 255→432。**
-你用成本買到了成功率。沒有最佳解,只有取捨,依據是你的業務:一次成功值多少錢?一次 escalation 多痛?
-
-而且因為是隨機系統,**單點估計會跳**。同一個設定換 5 個 seed,成功率的範圍是:
+**First, a prerequisite that is easy to get wrong: the agent is stochastic
+(Chapter 8), so each task cannot be run only once.** If you do, you are
+measuring luck. The correct approach is to **repeat each task k times, look at
+the distribution, and always report n (sample size)**.
+`lesson10` runs 10 tasks x 20 repetitions each (n=200) under two max-iter
+settings:
 
 ```
-max_iters=3:0.39 ~ 0.54     ← 看到「0.48」就當定值,是天真的
-max_iters=8:0.89 ~ 0.92
+Config        Success rate (n)   Mean iters*   Escalation   Mean cost
+max_iters=3   0.48 (n=200)       2.1           0.52         254.5
+max_iters=8   0.89 (n=200)       3.9           0.11         432.0
+* Mean iters counts successful runs only -- must be read alongside escalation rate,
+  otherwise "gives up very fast" looks like "very efficient."
 ```
 
-所以嚴謹的結論不是「成功率 = 0.48」,而是「成功率約 0.4–0.5(n=200)」。**報數字一定附 n,心裡一定有區間。**
+**Relaxing the fuse (3 -> 8): success rate 0.48 -> 0.89, escalation 0.52 -> 0.11,
+but mean cost 255 -> 432.**
+You bought success rate with cost. There is no optimal solution -- only
+trade-offs, driven by your business context: how much is one success worth? How
+painful is one escalation?
 
-## 10.3 動手做
+And because it is a stochastic system, **point estimates bounce around**. The
+same configuration run with 5 different seeds gives success rates of:
+
+```
+max_iters=3: 0.39 ~ 0.54     <- treating "0.48" as a fixed value is naive
+max_iters=8: 0.89 ~ 0.92
+```
+
+So a rigorous conclusion is not "success rate = 0.48" but "success rate ~0.4-0.5
+(n=200)." **Always report n; always think in intervals.**
+
+## 10.3 Hands-On
 
 ```bash
 python3 lesson10_loop_evals.py
 ```
 
-**檢查點**:看兩列的差。如果你只測「max_iters=8、某個簡單任務」,你會以為 loop 完美(成功!)。
-但 eval 告訴你真相:換一批含難任務的 suite,它的成功率、成本是多少。**一次成功是軼事,一個分佈才是證據。**
+**Checkpoint**: Look at the difference between the two rows. If you only tested
+"max_iters=8 on one easy task", you would think the loop is perfect (success!).
+The eval tells you the truth: with a suite that includes hard tasks, what are
+the success rate and cost? **One success is an anecdote; a distribution is
+evidence.**
 
-> 這正是生態工具 `loop-audit`(評 loop 健康度)、`loop-cost`(估 token 花費)在自動化的事;
-> 也呼應 agent 評測的一貫原則——不能量測的 agent / loop,不能說它「有用」。
+> This is exactly what the ecosystem tools `loop-audit` (assessing loop health)
+> and `loop-cost` (estimating token spend) automate -- and it echoes the
+> consistent principle in agent evaluation: a loop you cannot measure cannot be
+> called "useful."
 
-## 10.4 自我檢查
+## 10.4 Self-Check
 
-1. 為什麼說「單任務 verify 綠了不代表 loop 好」?
-2. loop 級 eval 的四個基本指標是什麼?各自越好的方向?
-3. 為什麼指標「只有在比較時才有意義」?舉 `lesson10` 的 A/B 為例。
-4. max_iters 從 3 放寬到 8,你用什麼換到了什麼?
-5. 決定上線哪一版 loop,除了看指標,還要看什麼?
-6. agent 是隨機的,這對「怎麼 eval」有什麼影響?為什麼報成功率一定要附 n、心裡要有區間?
+1. Why is "a single task verify turning green" not enough to call a loop good?
+2. What are the four basic loop-level eval metrics? Which direction is better for
+   each?
+3. Why do metrics "only mean something in comparison"? Use `lesson10`'s A/B as
+   an example.
+4. What do you buy and what do you give up when relaxing max_iters from 3 to 8?
+5. What besides the metrics should inform the deployment decision?
+6. The agent is stochastic -- what does that mean for how you run an eval? Why
+   must you report success rate with n and think in intervals?
 
-## 10.5 動手驗收
+## 10.5 Exercise
 
-打開 [`exercises/exercise10_loop_evals.py`](../exercises/exercise10_loop_evals.py),
-實作 `aggregate()` 算出四個指標(注意 mean_iters 只算成功的、全失敗時別除以零)。
-跑 `python3 exercises/check_exercise10.py` 驗收。
+Open [`exercises/exercise10_loop_evals.py`](../exercises/exercise10_loop_evals.py),
+implement `aggregate()` to compute the four metrics (note: mean_iters counts
+successful runs only; do not divide by zero when there are no successes).
+Run `python3 exercises/check_exercise10.py` to verify.
 
-## 10.6 自我檢查解答
+## 10.6 Self-Check Answers
 
-1. 單任務單次可能只是運氣或軼事;loop 的價值是對「一整批任務」的整體表現,要看分佈不是單點。
-2. 成功率(越高越好)/ 平均圈數(越少越好)/ escalation 率(越低越好)/ 平均成本(越低越好)。
-3. 因為「成功率 0.9」要有對照才知道好不好;A/B 顯示 max_iters 3 vs 8 把成功率/成本拉出差距,才看得出取捨。
-4. 用「平均成本上升(約 255→432)」換到「成功率上升(約 0.48→0.89)+ escalation 下降」。
-5. 還要看業務權重:一次成功值多少錢、一次 escalation 多痛、成本預算多少——指標餵決策,不替你決策。
-6. 隨機系統每個任務要重複跑 k 次、看分佈,不能只跑一次(那量到的是運氣);附 n 才知道樣本多大、心裡有區間才不會把會跳的單點當定值。
+1. A single task run once may be just luck or an anecdote; a loop's value is its
+   overall performance across a whole batch of tasks -- look at the distribution,
+   not a single point.
+2. success rate (higher) / mean iters (lower) / escalation rate (lower) /
+   mean cost (lower).
+3. "Success rate 0.9" tells you nothing without a baseline; A/B shows that
+   max_iters 3 vs 8 spreads success rate and cost apart, revealing the trade-off.
+4. Pay "higher mean cost (roughly 255 -> 432)" to buy "higher success rate
+   (roughly 0.48 -> 0.89) + lower escalation."
+5. Business weights: how much is one success worth? how painful is one
+   escalation? what is the cost budget? Metrics feed decisions -- they do not
+   make decisions.
+6. Stochastic system means each task must be repeated k times; looking at
+   distributions; reporting n so the reader knows the sample size; thinking in
+   intervals so that a bouncing point estimate is not taken as a fixed truth.
 
 ---
 
-✅ 過關條件:你能說出四個 loop 級指標、解釋為何要 A/B 比較,並實作出正確的 `aggregate()`。
-🎓 你已完成 Part II。回到 [README](../README.md) 或進入 [`capstone/`](../capstone/) 做總驗收。
+Passing condition: you can name the four loop-level metrics, explain why A/B
+comparison is needed, and implement a correct `aggregate()`.
+Graduation: you have completed Part II. Back to [README](../README.md) or enter
+[`capstone/`](../capstone/) for the final assessment.

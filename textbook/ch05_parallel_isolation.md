@@ -1,118 +1,161 @@
-# 第 5 章 —— 平行與隔離
+# Chapter 5 -- Parallelism and Isolation
 
-> **本章目標**:學會讓多個 loop 同時跑,並理解平行的前提是隔離。認識寫程式場景的
-> 標準隔離手段 `git worktree`。做完後你會記住:**隔離不是效能優化,是正確性的前提。**
+> **Chapter goal**: Learn how to run multiple loops simultaneously and understand
+> that isolation is the prerequisite for parallelism. Get familiar with `git
+> worktree`, the standard isolation tool for coding workflows. After this chapter
+> you will remember: **isolation is not a performance optimization -- it is a
+> correctness requirement.**
 >
-> 參考解答:[`lesson5_parallel_isolation.py`](../lesson5_parallel_isolation.py)
+> Reference solution: [`lesson5_parallel_isolation.py`](../lesson5_parallel_isolation.py)
 
-**TL;DR**:要平行跑多個 loop,前提是**隔離**;寫程式場景用 `git worktree` 給每個 loop
-一個獨立 checkout,跑完再挑最好的 merge。
+**TL;DR**: To run multiple loops in parallel you must first **isolate** them.
+In coding workflows use `git worktree` to give each loop an independent
+checkout; when done, pick the best one and merge.
 
-> **🧭 先備繞道(沒寫過多執行緒也沒關係)**
-> 本章程式用 `ThreadPoolExecutor` 同時跑好幾個 worker——你只要把它想成
-> 「同時開 3 個分身各做各的」。你**不需要**懂執行緒的細節,本章的重點不是並行技術,
-> 而是「**並行之前要先隔離**」這個觀念。程式碼照抄就能跑,專心看「隔離 vs 互踩」的對照即可。
+> **Navigation note (no threading background needed)**
+> The demo uses `ThreadPoolExecutor` to run several workers concurrently --
+> just think of it as "opening 3 copies of the agent and letting each do its
+> own thing." You do **not** need to understand thread internals; the chapter's
+> point is **"isolate before parallelizing"**, not parallel programming
+> techniques. Copy-paste the code and run it; focus on the isolated vs.
+> shared-file contrast.
 
-## 5.1 概念:平行的誘惑與陷阱
+## 5.1 Concept: The Temptation and the Trap
 
-一個 loop 跑得動之後,下一個念頭幾乎必然是:「能不能同時跑好幾個?」
+Once a single loop is working, the very next thought is almost always:
+"Can I run several at once?"
 
-- 同時讓三個 agent 各修一個 bug。
-- 同時試三種重構方案,跑完挑最好的。
-- 同時對十個 repo 各跑一次依賴升級。
+- Three agents each fixing a different bug simultaneously.
+- Three refactoring strategies running in parallel; pick the best at the end.
+- A dependency upgrade applied to ten repos at the same time.
 
-可以。但有個陷阱:**如果它們共用同一份工作目錄,它們會互相踩。**
-多個 worker 同時寫同一個檔,行與行**交錯**纏在一起、分不出哪行是誰寫的、順序也不可信
-(provenance/順序遺失)—— 最後產出一份「誰都不能為它負責」的成品。
+You can. But there is a trap: **if they share the same working directory,
+they will step on each other.**
 
-> **精確一點(連機制也講對)**:本課 demo 是小筆 `append`,你看到的是**行交錯**(出處/順序遺失),
-> 不是「位元級損毀」,也沒有真的「整檔被覆蓋」。而且每行之所以完整,**不是因為 GIL**——
-> GIL 只序列化 Python bytecode,**不保證 OS 層的寫入原子性**。真正的原因是:每行是一次小的、
-> 關檔即 flush 的 `write()` syscall,加上 `O_APPEND` 把「定位到檔尾 + 寫入」這步原子化。
-> **注意這對一般檔案在 POSIX 並非嚴格保證、也不可移植**(更大的非原子寫入仍會位元級交錯)。
-> 所以正解永遠是隔離,不是賭寫入原子性。對「平行 agent 的成品」而言,出處與順序遺失就已經夠致命。
+Multiple workers writing to the same file at the same time produces
+**interleaved lines** -- you cannot tell who wrote what or in what order
+(provenance and ordering are lost) -- and the result is an artifact that no
+single agent can stand behind.
 
-## 5.2 概念:git worktree —— 同一個 repo,多個獨立工作目錄
+> **Precise mechanics**: the demo uses small `append` writes, so what you
+> observe is **line interleaving** (provenance/ordering loss), not bit-level
+> corruption or one file overwriting another. And each line is intact
+> **not because of the GIL** -- the GIL serializes Python bytecodes but does
+> **not** guarantee OS-level write atomicity. The real reason individual lines
+> survive is that each is one small, file-close-flushes write() syscall, and
+> `O_APPEND` makes "seek to end + write" atomic. **Note: this is not strictly
+> guaranteed for regular files on POSIX and is not portable** (larger,
+> non-atomic writes will still interleave at the bit level). So the correct
+> answer is always isolation, not betting on write atomicity. For parallel
+> agent output, losing provenance and ordering is already fatal.
 
-寫程式場景的標準隔離手段是 `git worktree`。它讓同一個 repo 長出多個獨立的 checkout,
-**共享 git 物件庫、但檔案完全分開**:
+## 5.2 Concept: git worktree -- One Repo, Multiple Independent Working Directories
+
+The standard isolation tool for coding workflows is `git worktree`. It gives
+one repo multiple independent checkouts that **share the git object store but
+have completely separate file trees**:
 
 ```bash
-git worktree add ../wt-fix-a -b fix-a     # 長出一個獨立工作目錄,在新分支 fix-a
-git worktree add ../wt-fix-b -b fix-b     # 再一個,在 fix-b
+git worktree add ../wt-fix-a -b fix-a     # a new independent working directory on branch fix-a
+git worktree add ../wt-fix-b -b fix-b     # another, on fix-b
 git worktree add ../wt-fix-c -b fix-c
 
-# 三個 agent 各自在自己的 worktree 裡跑 loop —— 檔案互不干擾、commit 各自分支
-# 跑完後比較三個分支,挑最好的 merge 回主線
+# three agents each run their loop inside their own worktree
+# files never interfere; commits land on separate branches
+# when done, compare branches and merge the best one
 
-git worktree remove ../wt-fix-a           # 收工後清掉
+git worktree remove ../wt-fix-a           # clean up
 ```
 
-比起 `git clone` 三份,worktree 共享物件庫、省空間又快;比起共用一個目錄,
-它給每個 loop 一個乾淨、獨立、可丟棄的沙盒。這正是 Claude Code 等工具
-做「平行 agent」時底層在用的機制。
+Compared with cloning the repo three times, a worktree shares the object
+store (faster, less disk space). Compared with sharing one directory, it
+gives each loop a clean, independent, disposable sandbox. This is the
+mechanism Claude Code and similar tools use under the hood when they run
+parallel agents.
 
-## 5.3 動手做
+## 5.3 Hands-On
 
-`lesson5_parallel_isolation.py` 用「各自一個暫存目錄」模擬 worktree 的隔離效果
-(純標準庫好示範),並故意對比兩種情境:
+`lesson5_parallel_isolation.py` simulates worktree isolation using temporary
+directories (standard library only, for clarity), and deliberately contrasts
+two scenarios:
 
 ```bash
 python3 lesson5_parallel_isolation.py
 ```
 
-**檢查點一(隔離)**:情境一給每個 worker 一個自己的目錄。
-看輸出 —— 每個 worker 的私有檔乾乾淨淨,只有它自己的字句,沒被別人污染。
-關鍵就是那一行 `wt = os.path.join(base, f"wt-{w}")`:每人一個目錄。
+**Checkpoint 1 (isolated)**: Scenario 1 gives each worker its own directory.
+Read the output -- each worker's private file contains only its own lines,
+untouched by anyone else.
+The key line is `wt = os.path.join(base, f"wt-{w}")`: one directory per
+worker.
 
-**檢查點二(災難)**:情境二讓三個 worker 共用同一個 `result.txt`。
-看輸出 —— 三個 worker 的字句交錯纏在一起,九行裡混了三個作者。
-這份檔已經沒有任何一個 agent 能為它負責了。**這就是沒有隔離的平行。**
+**Checkpoint 2 (disaster)**: Scenario 2 has all three workers share a single
+`result.txt`.
+Read the output -- lines from all three workers are scrambled together;
+no single agent can be held responsible for the file. **This is parallelism
+without isolation.**
 
-> **注意**:這課用 thread + 暫存目錄「模擬」隔離,目的是讓你在零依賴下看清楚現象。
-> 真實專案請用 `git worktree`,它還順帶給你分支管理和乾淨的 merge 路徑。
+> **Note**: this lesson uses threads + temp directories to *simulate* isolation
+> so you can see the effect with zero dependencies. Real projects should use
+> `git worktree` -- it also gives you branch management and a clean merge path.
 
-## 5.4 卡關排查
+## 5.4 Troubleshooting
 
-| 症狀 | 原因 | 解法 |
+| Symptom | Cause | Fix |
 |---|---|---|
-| 平行跑完成品互相污染 | 多個 loop 共用工作目錄/檔案 | 每個 loop 一個 worktree 或獨立目錄 |
-| worktree 建不出來 | 路徑已存在 / 分支名重複 | 換路徑、換分支名,或先 `git worktree remove` |
-| 平行沒有變快 | 工作是 CPU-bound 又用了 thread | 改用多進程,或意識到瓶頸在 LLM API 而非本機 |
-| 跑完一堆 worktree 沒清 | 忘了 remove | 收尾一律 `git worktree remove`,或 `git worktree prune` |
+| Parallel outputs contaminate each other | Multiple loops share a working directory / file | Give each loop its own worktree or independent directory |
+| Cannot create a worktree | Path already exists / branch name collision | Use a different path or branch name, or `git worktree remove` first |
+| No speedup from parallelism | Work is CPU-bound and you used threads | Switch to multiple processes, or recognize that the bottleneck is the LLM API not the local machine |
+| Stale worktrees piling up | Forgot to remove them | Always `git worktree remove` at cleanup, or run `git worktree prune` |
 
-## 5.5 自我檢查
+## 5.5 Self-Check
 
-1. 平行跑多個 loop 最大的風險是什麼?
-2. `git worktree` 和 `git clone` 三份、以及共用一個目錄,各有什麼差別?
-3. 為什麼說「隔離不是效能優化,是正確性的前提」?
-4. demo 情境二裡,那份共用檔為什麼「誰都不能為它負責」?
-5. 平行 N 個 loop 跑完後,通常下一步要做什麼?(提示:分支)
+1. What is the biggest risk of running multiple loops in parallel?
+2. How does `git worktree` differ from cloning the repo three times, and from
+   sharing one directory?
+3. Why is "isolation a correctness requirement, not a performance optimization"?
+4. In demo scenario 2, why can "no single agent be held responsible" for the
+   shared file?
+5. What is typically the next step after N parallel loops finish? (Hint: branch)
 
-## 5.6 延伸練習
+## 5.6 Further Exercises
 
-- **真 worktree**:在一個真的 git repo 裡,手動跑一遍 `git worktree add` 三個分支、
-  各改一個檔、`git worktree list` 看狀態、再 remove。體會它和 clone 的差別。
-- **挑最好的**:把 demo 改成每個 worker 回傳一個「分數」,跑完後自動選分數最高的那份結果
-  (這就是「平行試多方案、擇優」的骨架)。
-- **加隔離斷言**:在 worker 開頭斷言它的 workdir 是空的、且不等於別人的 workdir,
-  讓「沒隔離」這個 bug 在第一時間就爆出來,而不是等成品污染才發現。
+- **Real worktree**: in an actual git repo, manually run `git worktree add` for
+  three branches, edit a file in each, `git worktree list` to see status, then
+  remove them all. Feel the difference from cloning.
+- **Pick the best**: modify the demo so each worker returns a "score"; after all
+  workers finish, automatically select the highest-scoring result (this is the
+  "run multiple strategies in parallel, pick the best" skeleton).
+- **Isolation assertion**: at the start of each worker, assert that its workdir is
+  empty and distinct from every other worker's workdir. Make "no isolation" a
+  bug that is caught immediately, not discovered later when the output is already
+  corrupt.
 
-## 5.7 動手驗收
+## 5.7 Exercise
 
-打開 [`exercises/exercise5_parallel_isolation.py`](../exercises/exercise5_parallel_isolation.py),
-實作 `run_isolated()`(每個 worker 一個專屬目錄),跑 `python3 exercises/check_exercise5.py` 驗收。
+Open [`exercises/exercise5_parallel_isolation.py`](../exercises/exercise5_parallel_isolation.py),
+implement `run_isolated()` (each worker gets its own dedicated directory), then
+run `python3 exercises/check_exercise5.py` to verify.
 
-## 5.8 自我檢查解答
+## 5.8 Self-Check Answers
 
-1. 多個 loop 共用工作目錄 → 行交錯、出處與順序遺失(provenance loss),產出沒人能負責。
-2. worktree:同 repo 多個獨立 checkout,共享物件庫、檔案分開、省空間又快;clone 三份較慢佔空間;共用目錄會互踩。
-3. 沒隔離時平行產出會互相污染、結果不可信;隔離保的是正確性,不是速度。
-4. 因為九行裡混了三個作者、字句交錯纏在一起,分不出哪行是誰,沒有任何 agent 能為它負責。
-5. 比較各分支、挑最好的那個 merge 回主線(平行試多方案、擇優)。
+1. Multiple loops share a working directory -> lines interleave, provenance and
+   ordering are lost (provenance loss); no agent can be held responsible for the
+   output.
+2. Worktree: same repo, multiple independent checkouts, shared object store,
+   separate file trees, faster and uses less disk than cloning; cloning is
+   slower and wastes space; sharing one directory causes mutual contamination.
+3. Without isolation, parallel outputs contaminate each other and results are
+   untrustworthy; isolation protects correctness, not speed.
+4. Nine lines mixed from three authors, interleaved in an unpredictable order --
+   no agent can point to its section.
+5. Compare branches, pick the best one, and merge it into the main line
+   (parallel multi-strategy, best-of-N).
 
 ---
 
-✅ 過關條件:你能說出平行的風險、解釋 worktree 的隔離原理,並在 demo 裡指出「污染」如何發生。
-最後一章,我們把前五課的零件組裝起來,接上排程器,讓 loop 自己醒來。
-→ [第 6 章:排程與無人值守 (Capstone)](ch06_scheduling.md)
+Passing condition: you can state the risk of parallelism, explain the
+worktree isolation model, and point to where "contamination" occurs in the demo.
+The last chapter assembles all five lessons' parts, hooks them to a scheduler,
+and lets the loop wake itself up.
+-> [Chapter 6: Scheduling and Unattended Loops](ch06_scheduling.md)

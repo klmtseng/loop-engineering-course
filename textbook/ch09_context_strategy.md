@@ -1,96 +1,134 @@
-# 第 9 章 —— 跨圈上下文策略
+# Chapter 9 -- Context Strategy Across Iterations
 
-> **本章目標**:搞懂真實 loop engineering 最核心的設計決策——**每一圈要餵 agent 什麼 context?**
-> 比較 stateless / full-conversation / spec-in-repo 三種策略的取捨,並學會生產預設:
-> 乾淨 context + repo 裡一份精簡 spec。做完後你會記住:**別把記憶塞進對話歷史,塞進 repo。**
+> **Chapter goal**: Understand the most central, least-discussed design decision
+> in real loop engineering -- **what context should you feed the agent each
+> round?** Compare stateless / full-conversation / spec-in-repo strategies
+> and their trade-offs, and learn the production default: clean context plus
+> a concise spec inside the repo.
+> After this chapter you will remember: **do not stuff memory into conversation
+> history; stuff it into the repo.**
 >
-> 參考解答:[`lesson9_context_strategy.py`](../lesson9_context_strategy.py)
+> Reference solution: [`lesson9_context_strategy.py`](../lesson9_context_strategy.py)
 
-**TL;DR**:對話歷史會無上限長大、爆成本又 drift;把跨圈記憶寫成 repo 裡一份精簡 spec,
-每圈用乾淨 context + 這份 spec 重新派工——這就是 durable spec,coding agent 的預設。
+**TL;DR**: Conversation history grows without bound, exploding cost and causing
+drift; write cross-round memory as a concise spec inside the repo, and re-task
+the agent each round with a clean context + that spec -- this is the durable
+spec, the default for coding agents.
 
-## 9.1 概念:被前面幾課藏起來的決策
+## 9.1 Concept: The Decision Hidden by Earlier Lessons
 
-前面的 mock agent 只收一個 `feedback` 字串。但真案子裡,每圈你都得決定餵 agent 什麼:
+The mock agents in earlier lessons received only a single `feedback` string.
+But in a real project you must decide every round what to feed the agent:
 
-| 策略 | 每圈的 context | 優點 | 致命傷 |
+| Strategy | Context each round | Advantage | Fatal flaw |
 |---|---|---|---|
-| **stateless(乾話回饋)** | 任務 + 最新一條乾話回饋 | context 最省、最便宜 | **回饋承載不了記憶時**會重複犯錯、猜不到 |
-| **full conversation** | 累積整段對話歷史 | agent 記得全部 | context 每圈長大 → 成本線性爆炸、終將撞 context window、越長越 drift |
-| **spec-in-repo** | 乾淨 context + 一份精簡 spec | 有記憶 **且** context 有界 | 你得自己維護那份 spec |
+| **stateless (thin feedback)** | task + one thin feedback message | smallest context, cheapest | **when feedback cannot carry the needed memory**, repeats mistakes, cannot converge |
+| **full conversation** | entire accumulated conversation history | agent remembers everything | context grows larger every round -> cost explodes linearly, will eventually hit context window, longer context = more drift |
+| **spec-in-repo** | clean context + one concise spec file | has memory **and** bounded context | you must maintain that spec yourself |
 
-## 9.2 用數字看差距
+## 9.2 Seeing the Gap in Numbers
 
-`lesson9_context_strategy.py` 讓四種策略猜同一個密碼(13),量 context 成本:
+`lesson9_context_strategy.py` runs four strategies on the same task (guess the
+secret number 13) and measures context cost:
 
 ```
-策略                    結果      圈數   峰值context   累計context
-stateless(乾話回饋)     FAIL      20    30           600    ← 回饋太薄,承載不了記憶 → 猜不到
-full conversation       SUCCESS   13    174          1326   ← 猜得到,但 context 爆炸
-spec-in-repo            SUCCESS   13    38           494    ← 猜得到,context 還恆定有界
-stateless(帶比較訊號)  SUCCESS   4     34           136    ← ★ 一樣沒記憶,但回饋夠 → 二分搜尋,最便宜
+Strategy                   Result    Rounds  Peak ctx  Total ctx
+stateless (thin feedback)  FAIL      20      30        600    <- feedback too thin, no memory -> can't converge
+full conversation          SUCCESS   13      174       1326   <- converges but context explodes
+spec-in-repo               SUCCESS   13      38        494    <- converges with bounded context
+stateless (with signal)    SUCCESS   4       34        136    <- still no memory, but better feedback -> binary search, cheapest
 ```
 
-**重點(也是一個容易犯的過度概化)**:第一行的失敗,**兇手不是「stateless」本身,是「回饋太薄」**。
-看最後一行——同樣 stateless、同樣不記憶,只要把回饋從一句乾話換成「太高/太低」累積出的範圍,
-它二分搜尋 4 圈就猜到,而且 context 比誰都省。**精確的命題是:stateless 在「單條回饋無法承載所需記憶」時才失敗。**
+**Key insight (and a common over-generalization to avoid)**: the failure in the
+first row is **not** caused by "stateless" per se -- look at the last row. Same
+stateless approach, same absence of memory; just replace the thin feedback with
+"too high / too low" (a cumulative range signal), and the agent binary-searches
+to the answer in 4 rounds with the smallest context of all. **The precise claim
+is: stateless fails only when a single feedback message cannot carry the
+required memory.**
 
-那為什麼還推 spec-in-repo?因為很多真實任務的「所需記憶」沒辦法壓進一條比較訊號(例如「已經改過哪些檔、
-為什麼這樣設計」),這時把記憶寫進 repo 的 spec 最實際。conversation 雖然也記得住,但 context 無上限長大、會撞牆。
+Why recommend spec-in-repo then? Because in many real tasks the "required
+memory" cannot be compressed into a comparison signal (e.g., "which files have
+been changed so far and why they were designed that way"). In those cases writing
+memory into a repo spec is more practical than conversation, which has no bound.
 
-## 9.3 概念:durable spec —— 把記憶放進 repo,不是對話
+## 9.3 Concept: Durable Spec -- Memory in the Repo, Not the Conversation
 
-關鍵心法:
+The key insight:
 
-> **別把跨圈記憶塞進對話歷史(它無上限長大)。把它寫進 repo 裡一份精簡的 spec/scratchpad,
-> 每圈用乾淨 context + 這份 spec 重新派工。**
+> **Do not stuff cross-round memory into conversation history (it grows without
+> bound). Write it into a concise spec/scratchpad inside the repo; re-task the
+> agent each round with a clean context + that spec.**
 
-這就是真實 loop-engineering 框架講的 **durable spec**。它同時解決三個問題:
-- **成本**:context 恆定,不隨圈數爆炸。
-- **drift**:每圈乾淨開始,不會被幾十輪的雜訊帶偏。
-- **抗當機**:spec 在 repo 裡,進程死了重啟也還在(呼應第 6 章的狀態外存)。
+This is what real loop-engineering frameworks call the **durable spec**. It
+solves three problems at once:
 
-在 coding agent 的世界,這份 spec 常常就是:repo 裡的一個 `PLAN.md` / `TODO.md` / 測試檔 /
-issue 描述——agent 每圈讀它、更新它,而不是靠記住三十輪前說過的話。
+- **Cost**: context is bounded and does not grow with the number of rounds.
+- **Drift**: each round starts fresh, not anchored to dozens of rounds of noise.
+- **Crash resilience**: the spec is in the repo; if the process dies and
+  restarts, the memory is still there (echoing Chapter 6's external state
+  storage).
 
-## 9.4 動手做
+In the coding-agent world this spec is often a `PLAN.md` / `TODO.md` / test
+file / issue description inside the repo -- the agent reads and updates it
+each round rather than relying on remembering something said thirty rounds ago.
+
+## 9.4 Hands-On
 
 ```bash
 python3 lesson9_context_strategy.py
 ```
 
-**檢查點**:比較 `peak context` 那一欄。conversation 的峰值是 spec-in-repo 的好幾倍,而且
-**會隨任務變長而無上限成長**——想像一個要 100 圈的任務,conversation 早就撞爆 context window 了。
-spec-in-repo 不管幾圈,context 都那麼大。
+**Checkpoint**: Compare the `peak context` column. The conversation strategy's
+peak is several times larger than spec-in-repo's -- and **it will grow without
+bound as the task gets longer**. Imagine a task requiring 100 rounds: the
+conversation approach would have blown past the context window long before
+finishing. spec-in-repo stays the same size regardless of the number of rounds.
 
-## 9.5 自我檢查
+## 9.5 Self-Check
 
-1. 三種上下文策略各是什麼?各自的優點與致命傷?
-2. 為什麼 full conversation「終將撞 context window」?它除了貴還有什麼問題?
-3. 什麼是 durable spec?它同時解決了哪三個問題?
-4. 在 coding agent 的場景,那份 spec 實際上常常是 repo 裡的什麼東西?
-5. spec-in-repo 和第 6 章的「狀態外存」有什麼關聯?
-6. 「stateless 就一定失敗」這句話哪裡不精確?用 demo 最後一行反駁它。
+1. What are the three context strategies? What is each one's advantage and
+   fatal flaw?
+2. Why will full conversation "eventually hit the context window"? What other
+   problem does it have besides cost?
+3. What is a durable spec? What three problems does it solve simultaneously?
+4. In coding-agent practice, what does that spec typically look like inside the
+   repo?
+5. How is spec-in-repo related to Chapter 6's "external state storage"?
+6. Why is "stateless always fails" imprecise? Use the demo's last row to rebut it.
 
-## 9.6 動手驗收
+## 9.6 Exercise
 
-打開 [`exercises/exercise9_context_strategy.py`](../exercises/exercise9_context_strategy.py),
-實作 `strat_spec_in_repo()`(有界 context + 用 tried 去重)。
-跑 `python3 exercises/check_exercise9.py` 驗收。
+Open [`exercises/exercise9_context_strategy.py`](../exercises/exercise9_context_strategy.py),
+implement `strat_spec_in_repo()` (bounded context + deduplication using `tried`).
+Run `python3 exercises/check_exercise9.py` to verify.
 
-## 9.7 自我檢查解答
+## 9.7 Self-Check Answers
 
-1. stateless(任務+最新回饋:省,但回饋太薄時無記憶)/ conversation(累積對話:有記憶但 context 爆炸、drift)/
-   spec-in-repo(乾淨 context+精簡 spec:有記憶又有界,但要自己維護 spec)。
-2. 對話每圈長大,遲早超過模型的 context window;且越長越容易 drift——**為什麼**:長 context 下注意力被稀釋、
-   早期的雜訊/錯誤一直被帶進來當前提,模型容易被它錨定而離題。成本也線性上升。
-6. 不精確在於把「失敗」歸給 statelessness;真正原因是「回饋承載不了所需記憶」。demo 最後一行:同樣 stateless,
-   只要回饋帶「太高/太低」的範圍,二分搜尋 4 圈就成功、context 還最省——可見兇手是回饋不足,不是無狀態。
-3. durable spec = 把跨圈記憶寫進 repo 的精簡 spec;同時解決成本(context 有界)、drift(每圈乾淨)、抗當機(狀態在 repo)。
-4. 常常是 `PLAN.md` / `TODO.md` / 測試檔 / issue 描述——agent 每圈讀它、更新它。
-5. 兩者都把「狀態」放進進程之外的持久檔案;spec-in-repo 是把『記憶』也這樣處理,進程死了重啟仍在。
+1. stateless (task + latest feedback: cheap, but no memory when feedback is thin
+   -> cannot converge) / conversation (accumulated history: has memory but
+   context explodes and drifts) / spec-in-repo (clean context + concise spec:
+   has memory and bounded, but you must maintain the spec).
+2. Conversation grows every round and will eventually exceed the model's context
+   window; and the longer the context, **the more drift**: with a long context
+   attention is diluted and early noise/errors keep being dragged along as
+   premises, causing the model to go off-topic.
+3. durable spec = write cross-round memory into a concise in-repo spec; solves
+   cost (bounded context), drift (each round is clean), crash resilience
+   (state is in the repo).
+4. Often a `PLAN.md` / `TODO.md` / test file / issue description -- the agent
+   reads and updates it each round.
+5. Both store "state" in a persistent location outside the process; spec-in-repo
+   applies the same idea to "memory" -- if the process dies and restarts, the
+   memory is still there.
+6. Imprecise: the failure is not caused by statelessness but by feedback that
+   cannot carry the required memory. Demo last row: same stateless, same no
+   memory, but feedback carries a "too high / too low" range -> binary search
+   succeeds in 4 rounds with the smallest context -- the culprit is thin
+   feedback, not no-state.
 
 ---
 
-✅ 過關條件:你能說出三種上下文策略的取捨、解釋 durable spec,並實作出有界 context 的 spec-in-repo。
-→ [第 10 章:loop 級 evals](ch10_loop_evals.md)
+Passing condition: you can describe the trade-offs of all three context
+strategies, explain the durable spec, and implement bounded-context spec-in-repo.
+-> [Chapter 10: Loop-Level Evals](ch10_loop_evals.md)
