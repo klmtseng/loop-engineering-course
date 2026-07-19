@@ -1,57 +1,58 @@
-# 測驗答案卷
+# Answer Key
 
-`quiz.py` 會自動批改 mcq / short、反思題給參考答案讓你自評。這份是人讀版總整理,
-也可當各章 textbook「自我檢查」的對照答案。**建議先自己答、再看這裡。**
+`quiz.py` auto-grades mcq / short questions and provides model answers for reflection questions.
+This file is the human-readable summary, also usable as a self-check reference for each textbook chapter.
+**Recommended: try answering first, then check here.**
 
-## 第 1 章 · 最小閉環
-1. **(單選)** loop 與 prompt engineering 的差別 → **把「決定要不要再 prompt 一次的人」換成程式**;
-   你交付的是一個會自己迭代(act→verify→decide)的系統。
-2. **(簡答)** loop 的靈魂 → **verify**;它定義「做完」是什麼意思,決定何時該停。
-3. **(反思)** 為什麼有的目標不能做成 loop → 目標必須**機器可判定**,verify 要能客觀回答對錯,否則永遠不知道何時停。
+## Chapter 1 - The Minimal Loop
+1. **(MCQ)** Difference between loop and prompt engineering -> **replaces the human who decides whether to prompt again with a program**;
+   what you deliver is a system that iterates on its own (act -> verify -> decide).
+2. **(Short)** The soul of a loop -> **verify**; it defines what "done" means and determines when to stop.
+3. **(Reflect)** Why some goals cannot be made into a loop -> the goal must be **machine-decidable**; verify must be able to answer objectively correct or wrong, otherwise it never knows when to stop.
 
-## 第 2 章 · 退出條件
-1. **(單選)** between-iteration command 用什麼判斷通過 → **命令的結束碼 exit code**(0 = 過)。
-2. **(簡答)** 連續兩圈產出相同 → **STALL**;提早止血,不必燒完 max-iter。
-3. **(反思)** 為什麼檢查輸出要原封不動餵回 → 那是 agent 下一圈修錯的**唯一線索**。
+## Chapter 2 - Exit Conditions
+1. **(MCQ)** How a between-iteration command determines pass -> **the command's exit code** (0 = pass).
+2. **(Short)** Two consecutive rounds produce the same output -> **STALL**; cut losses early, no need to burn all max-iter rounds.
+3. **(Reflect)** Why check output should be fed back verbatim -> it is the agent's **only clue** for the next fix.
 
-## 第 3 章 · 安全與成本
-1. **(單選)** 不是四道防線的是 → **用最新的模型**;四道防線=保險絲、預算、run-log、分階段(L1→L3)。
-2. **(單選)** L1(report)→ **只觀察、只報告,絕不動手**(dry-run)。
-3. **(簡答)** run-log 寫入模式 → **append(附加、不覆蓋)**。
-4. **(反思)** propose/commit 分離 → agent 只提議、loop 依等級決定要不要執行;L1 只記錄提議故零風險。
+## Chapter 3 - Safety and Cost
+1. **(MCQ)** Not one of the four safety rails -> **using the latest model**; the four rails are: fuse, budget, run-log, staged rollout (L1->L3).
+2. **(MCQ)** L1 (report) -> **only observes and reports, never acts** (dry-run).
+3. **(Short)** run-log write mode -> **append (no overwriting)**.
+4. **(Reflect)** propose/commit separation -> agent only proposes; loop decides whether to execute based on level; L1 only records proposals so zero-risk.
 
-## 第 4 章 · maker/checker
-1. **(單選)** 不讓 agent 自評的原因 → **會自我感覺良好(grading inflation),幾乎一定放水**。
-2. **(簡答)** checker reject 時要附 → **具體該怎麼改(原因/回饋)**,否則 maker 只能瞎猜。
-3. **(反思)** 怎麼讓 checker 獨立 → 不同 system prompt、甚至不同模型,只看成品不看 maker 多努力。
+## Chapter 4 - maker/checker
+1. **(MCQ)** Why not let the agent self-verify -> **grading inflation -- it almost always passes itself**.
+2. **(Short)** What checker must return on reject -> **specific feedback on how to fix it**; otherwise the maker can only guess.
+3. **(Reflect)** How to make the checker truly independent -> different system prompt, or even different model; only looks at the output, not how hard the maker tried.
 
-## 第 5 章 · 平行與隔離
-1. **(單選)** 平行多 loop 的前提 → **隔離**(各有獨立工作空間)。
-2. **(簡答)** 標準 git 隔離手段 → **git worktree**。
-3. **(反思)** 為何隔離是正確性前提 → 沒隔離平行產出會互相污染,結果不可信;保的是正確性不是速度。
+## Chapter 5 - Parallelism and Isolation
+1. **(MCQ)** Prerequisite for parallel loops -> **isolation** (each has its own independent workspace).
+2. **(Short)** Standard git isolation mechanism -> **git worktree**.
+3. **(Reflect)** Why isolation is a correctness prerequisite -> without it parallel outputs contaminate each other and cannot be trusted; it guarantees correctness, not just speed.
 
-## 第 6 章 · 排程與無人值守
-1. **(單選)** 讓 loop 自己醒來的正確寫法 → **寫成 `--once`,交給 cron 每次呼叫一次**(抗當機)。
-2. **(單選)** 沒待辦的一拍 → **安靜跳過、記一筆 idle**(不做事也是正確結果)。
-3. **(反思)** tick 的四件事 → triage → act(第1/2課)→ verify(第4課獨立 checker)→ log+decide(第3課)。
+## Chapter 6 - Scheduling and Unattended Loops
+1. **(MCQ)** Correct way to make a loop wake itself up -> **write it as `--once`, let cron call it each time** (crash-resistant).
+2. **(MCQ)** Tick with no pending work -> **skip quietly and log one idle event** (doing nothing is the correct result).
+3. **(Reflect)** The four steps of a tick -> triage -> act (Lessons 1/2) -> verify (Lesson 4 independent checker) -> log+decide (Lesson 3).
 
-## 第 7 章 · verify 是代理指標
-1. **(單選)** agent 讓 verify 變綠最省力的方式 → **鑽 verify(硬編/改弱測試),而非真的解決問題**。
-2. **(簡答)** 「指標變成目標就不再是好指標」→ **Goodhart 定律**。
-3. **(單選)** 不是把 verify 變難鑽的對策 → **讓 agent 也能改 verify/測試**(正好相反,要隔離)。
-4. **(反思)** `print(20+22)` 為何是作弊 → 它硬編答案、只過單一檢查,證明「通過 verify ≠ 解決問題」,verify 只是代理指標。
+## Chapter 7 - verify Is a Proxy Metric
+1. **(MCQ)** Easiest way for agent to make verify green -> **game verify (hard-code / weaken tests), not solve the problem**.
+2. **(Short)** "When a measure becomes a target it ceases to be a good measure" -> **Goodhart's Law**.
+3. **(MCQ)** Not a defense for making verify harder to game -> **letting the agent modify verify/tests** (exactly the opposite; isolation is required).
+4. **(Reflect)** Why `print(20+22)` was cheating -> it hard-coded the answer and only passed one check; proves "passing verify != solving the problem"; verify is only a proxy metric.
 
-## 第 8 章 · 非決定性與真實 agent
-1. **(單選)** 真 agent vs stub 最大差別 → **非決定性(會亂跳、會退步、同 prompt 兩次不同)**。
-2. **(簡答)** 跨圈記住歷史最佳 → **best-so-far**。
-3. **(單選)** 偶發失敗的重試 → **指數退避 + 抖動,且重試有上限**。
+## Chapter 8 - Non-Determinism and Real Agents
+1. **(MCQ)** Biggest difference between real agent and stub -> **non-determinism (drifts, regresses, same prompt twice gives different results)**.
+2. **(Short)** Remembering the historical best across rounds -> **best-so-far**.
+3. **(MCQ)** Handling intermittent failures -> **exponential backoff + jitter, with a retry cap**.
 
-## 第 9 章 · 跨圈上下文策略
-1. **(單選)** 記憶塞對話歷史的問題 → **context 無上限長大,爆成本/撞 window/drift**。
-2. **(簡答)** 寫進 repo 的精簡記憶檔 → **(durable) spec**。
-3. **(反思)** 三策略取捨 → stateless 省但無記憶;conversation 有記憶但爆炸且 drift;spec-in-repo 有記憶又有界。
+## Chapter 9 - Cross-Round Context Strategy
+1. **(MCQ)** Problem with stuffing memory into conversation history -> **context grows without bound, cost explodes / hits window / causes drift**.
+2. **(Short)** Concise memory file written into the repo -> **(durable) spec**.
+3. **(Reflect)** Three strategy trade-offs -> stateless: cheap but no memory; conversation: has memory but explodes and drifts; spec-in-repo: memory with bounded context.
 
-## 第 10 章 · loop 級 evals
-1. **(單選)** 判斷 loop 好不好 → **對一整批任務看整體指標**(非單任務一次綠)。
-2. **(簡答)** 四指標之一 → **平均圈數 / escalation 率 / 平均成本**(任一)。
-3. **(反思)** 指標為何要比較 → 單看一個數字不知好壞;A/B 才看得出取捨、據以決策。
+## Chapter 10 - Loop-Level Evals
+1. **(MCQ)** Judging whether a loop is worth deploying -> **aggregate metrics across a full task suite** (not a single task, single run).
+2. **(Short)** One of the four metrics -> **mean iters / escalation rate / mean cost** (any one).
+3. **(Reflect)** Why metrics must be compared -> a single number tells you nothing; only A/B reveals trade-offs and enables decisions.
