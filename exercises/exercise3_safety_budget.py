@@ -1,17 +1,18 @@
 """
-練習 3 —— 安全與成本 (對應第 3 課)
+Exercise 3 -- Safety and Cost (corresponds to Lesson 3)
 ====================================
-這課你要補兩個關鍵零件,其餘鷹架(safe_loop、log_event、agent、execute)都給好了。
+You need to fill in two key components; the rest of the scaffolding
+(safe_loop, log_event, agent, execute) is provided.
 
-TODO 1 —— Budget 類別的兩個方法:
-    can_continue() → 圈數「且」token 都還沒到上限,才回 True
-    charge(tokens) → 用掉一圈、累加 tokens
+TODO 1 -- Two methods on the Budget class:
+    can_continue() -> True only if BOTH iterations AND tokens are still under their caps
+    charge(tokens) -> consume one iteration and accumulate tokens
 
-TODO 2 —— should_execute(level):
-    L1_REPORT → False (只報告,絕不執行)
-    其他(L2/L3) → True
+TODO 2 -- should_execute(level):
+    L1_REPORT -> False (report only, never execute)
+    anything else (L2/L3) -> True
 
-完成後驗收:
+Assessment:
     python3 check_exercise3.py
 """
 
@@ -34,20 +35,20 @@ class Budget:
         self.used_tokens = 0
 
     def can_continue(self):
-        # TODO 1a: 圈數與 token 都還沒到上限才回 True
-        raise NotImplementedError("實作 can_continue()")
+        # TODO 1a: return True only when both iterations and tokens are still under their caps
+        raise NotImplementedError("implement can_continue()")
 
     def charge(self, tokens):
-        # TODO 1b: 用掉一圈、累加 tokens
-        raise NotImplementedError("實作 charge()")
+        # TODO 1b: consume one iteration and accumulate tokens
+        raise NotImplementedError("implement charge()")
 
 
 def should_execute(level):
-    # TODO 2: L1 只報告(False),其他要執行(True)
-    raise NotImplementedError("實作 should_execute()")
+    # TODO 2: L1 only reports (False); everything else executes (True)
+    raise NotImplementedError("implement should_execute()")
 
 
-# ---- 以下【已給你】,會用到上面兩個 TODO ----
+# ---- The following is [Provided] -- it uses the two TODOs above ----
 def log_event(logfile, **fields):
     fields["ts"] = time.strftime("%H:%M:%S")
     with open(logfile, "a") as f:
@@ -60,7 +61,7 @@ def agent(attempt):
 
 
 def execute(action, workdir):
-    return f"已執行 {action}"
+    return f"executed {action}"
 
 
 def safe_loop(level, budget, logfile, workdir):

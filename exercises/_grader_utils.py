@@ -1,13 +1,14 @@
 """
-_grader_utils.py —— autograder 的共用零件
+_grader_utils.py -- shared utilities for autograders
 ==========================================
-每個 check_exerciseN.py(與 capstone 的 grade_capstone.py)都靠這幾件事:
-  1. load(path)        把學生的檔當模組載進來 (不管它在哪)
-  2. Grader            收集一條條 assert,最後印 計分卡(✅ 過 / ❌ 錯 / ⬜ 待完成)
-  3. run / requirement 把「還沒實作的 TODO」轉成友善訊息,而不是醜 traceback
+Every check_exerciseN.py (and capstone/grade_capstone.py) relies on these:
+  1. load(path)        load the student's file as a module (regardless of where it lives)
+  2. Grader            collect assertion results, then print a scorecard (pass / fail / todo)
+  3. run / requirement turn "unimplemented TODOs" into friendly messages instead of ugly tracebacks
 
-設計重點:autograder 自己就是一個 verify 閘門 —— 它 import 學生 expose 的函式、
-餵受控輸入、逐項斷言行為,不解析 stdout (脆弱)。這正是本課教的「驗收要客觀」。
+Design note: the autograder itself is a verify gate -- it imports the functions the student exposes,
+feeds them controlled inputs, and asserts their behavior item by item, without parsing stdout (fragile).
+This is exactly the "verification must be objective" principle the course teaches.
 """
 
 import importlib.util
@@ -16,27 +17,27 @@ import sys
 
 
 def load(path, name="student_module", missing_hint=None):
-    """把任意路徑的 .py 當模組載入並回傳。找不到/未完成就友善報錯。"""
+    """Load an arbitrary .py file as a module and return it. Gives a friendly error if not found or incomplete."""
     path = os.path.abspath(path)
     if not os.path.exists(path):
-        print(f"✗ 找不到檔案:{path}")
+        print(f"✗ File not found: {path}")
         if missing_hint:
             print(f"  {missing_hint}")
-        print("  (或用 --target 指定你的檔案)")
+        print("  (Or use --target to specify your file)")
         sys.exit(2)
     spec = importlib.util.spec_from_file_location(name, path)
     mod = importlib.util.module_from_spec(spec)
     try:
         spec.loader.exec_module(mod)
     except NotImplementedError:
-        print("✗ 這支檔案載入時就丟出 NotImplementedError(還有 TODO 沒實作)。")
-        print("  先把標 TODO 的地方補完,再來跑驗收。")
+        print("✗ This file raises NotImplementedError on import (there are still TODOs to implement).")
+        print("  Fill in the items marked TODO, then run the assessment again.")
         sys.exit(1)
     return mod
 
 
 def target_path(default):
-    """解析 --target 參數;沒給就用預設。"""
+    """Parse the --target argument; use the default if not provided."""
     argv = sys.argv
     if "--target" in argv:
         return argv[argv.index("--target") + 1]
@@ -44,12 +45,12 @@ def target_path(default):
 
 
 class Grader:
-    """收集 check 結果,最後 report()。狀態三種:True 過 / False 錯 / 'todo' 待完成。
-    只要不是全部 True,exit code = 1。"""
+    """Collect check results, then report(). Status has three values: True pass / False fail / 'todo' pending.
+    Any result that is not all True means exit code = 1."""
 
     def __init__(self, title):
         self.title = title
-        self.results = []  # (status, msg);status ∈ {True, False, "todo"}
+        self.results = []  # (status, msg); status in {True, False, "todo"}
 
     def check(self, passed, msg):
         self.results.append((bool(passed), msg))
@@ -57,15 +58,15 @@ class Grader:
         return passed
 
     def todo(self, msg):
-        """某個要件還沒實作 —— 不算錯,標成待完成。"""
+        """A requirement is not yet implemented -- not a failure, marked as pending."""
         self.results.append(("todo", msg))
-        print(f"  ⬜ 待完成  {msg}")
+        print(f"  ⬜ pending  {msg}")
 
     def check_raises(self, fn, msg):
-        """期望 fn() 丟例外 (用來驗『該擋的有擋住』)。"""
+        """Expect fn() to raise an exception (used to verify that something that should be blocked is blocked)."""
         try:
             fn()
-            self.check(False, msg + "(預期該丟錯,但沒有)")
+            self.check(False, msg + "(expected an exception but none was raised)")
         except Exception:
             self.check(True, msg)
 
@@ -76,36 +77,37 @@ class Grader:
         total = len(self.results)
         print("-" * 56)
         if passed == total:
-            print(f"🎉 {self.title}:全部 {total} 項通過!過關了。")
+            print(f"🎉 {self.title}: all {total} checks passed! You passed this lesson.")
             return 0
         tail = []
         if wrong:
-            tail.append(f"{wrong} 項要修(❌)")
+            tail.append(f"{wrong} to fix (❌)")
         if todos:
-            tail.append(f"{todos} 項還沒做(⬜)")
-        print(f"📋 {self.title}:{passed}/{total} 項通過" + ("," + "、".join(tail) if tail else "") + "。")
-        print("   照上面的 ❌/⬜ 一項一項補,改完再跑一次。(卡死了再看 solutions/ 參考解答)")
+            tail.append(f"{todos} not done (⬜)")
+        print(f"📋 {self.title}: {passed}/{total} passed" + (", " + ", ".join(tail) if tail else "") + ".")
+        print("   Fix the items marked ❌/⬜ one by one, then run again. (Check solutions/ only when truly stuck.)")
         return 1
 
 
 def requirement(grader, label, fn):
-    """跑一個『要件』的檢查。fn 內部自己呼叫 grader.check(...)。
-    若 fn 撞到還沒實作的部分(NotImplementedError)→ 標成 ⬜ 待完成(不中止其他要件);
-    若 fn 執行時爆其他錯 → 記成 ❌ 並附錯誤。這讓學生在多要件的關卡也能看到部分進度。"""
+    """Run one 'requirement' check. fn calls grader.check(...) internally.
+    If fn hits an unimplemented section (NotImplementedError) -> mark as pending (does not abort other requirements);
+    if fn raises any other error -> record as failure with the error. This lets students see partial progress
+    on multi-requirement exercises."""
     try:
         fn()
     except NotImplementedError:
-        grader.todo(f"{label}(還沒實作)")
+        grader.todo(f"{label} (not yet implemented)")
     except Exception as e:
-        grader.check(False, f"{label} 執行時出錯:{type(e).__name__}: {e}")
+        grader.check(False, f"{label} raised an error: {type(e).__name__}: {e}")
 
 
 def run(grade_fn, grader):
-    """單一 TODO 的練習用:grade_fn 內若碰到未實作就友善收尾。回傳 exit code。"""
+    """For single-TODO exercises: if grade_fn hits an unimplemented section, give a friendly message. Returns exit code."""
     try:
         grade_fn()
     except NotImplementedError as e:
-        print(f"\n✗ 還有 TODO 沒實作:{e}")
-        print("  把標 TODO 的地方補完,再來驗收。")
+        print(f"\n✗ TODO not yet implemented: {e}")
+        print("  Fill in the items marked TODO, then run again.")
         return 1
     return grader.report()

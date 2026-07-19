@@ -1,19 +1,19 @@
 """
-練習 2 —— 退出條件與驗證閘門 (對應第 2 課)
+Exercise 2 -- Exit Conditions and the Verify Gate (corresponds to Lesson 2)
 ==========================================
-鷹架(Exit、agent、run_check、寫檔)都給你了。你只要實作 loop()。
+The scaffolding (Exit, agent, run_check, file writing) is provided. You only need to implement loop().
 
-要實作的 loop(check_cmd, workdir) 規格,回傳 (Exit, code_or_None):
-  每圈 (最多 MAX_ITERS 圈):
+Specification for loop(check_cmd, workdir), returns (Exit, code_or_None):
+  Each round (at most MAX_ITERS rounds):
     1. code = agent(feedback, attempt=i-1)
-    2. 【STALL 出口】若 code 和上一圈完全相同 → return (Exit.STALL, None)
-    3. 把 code 寫進 workdir/add.py (用給好的 write_code)
+    2. [STALL exit] if code is identical to the previous round -> return (Exit.STALL, None)
+    3. Write code to workdir/add.py (use the provided write_code)
     4. passed, output = run_check(check_cmd, workdir)
-    5. 【SUCCESS 出口】passed 為真 → return (Exit.SUCCESS, code)
-    6. 否則把 output 當下一圈的 feedback
-  跑完都沒過 → 【FUSE 出口】return (Exit.FUSE, None)
+    5. [SUCCESS exit] if passed is True -> return (Exit.SUCCESS, code)
+    6. Otherwise set output as feedback for the next round
+  If all rounds complete without passing -> [FUSE exit] return (Exit.FUSE, None)
 
-完成後驗收:
+Assessment:
     python3 check_exercise2.py
 """
 
@@ -25,31 +25,31 @@ MAX_ITERS = 6
 
 
 class Exit(Enum):
-    SUCCESS = "達標,綠了"
-    FUSE = "保險絲斷(圈數燒完)"
-    STALL = "卡住(連續兩圈產出相同)"
+    SUCCESS = "goal met, green"
+    FUSE = "fuse blown (iterations exhausted)"
+    STALL = "stalled (two consecutive identical outputs)"
 
 
 def run_check(cmd, cwd):
-    """【已給你】跑命令,回傳 (是否通過, 輸出)。autograder 會替換它。"""
+    """[Provided] Run the command, return (passed, output). The autograder will replace this."""
     p = subprocess.run(cmd, cwd=cwd, shell=True, capture_output=True, text=True, timeout=30)
     return p.returncode == 0, (p.stdout + p.stderr).strip()
 
 
 def agent(feedback, attempt):
-    """【已給你】替身。autograder 會替換它。"""
+    """[Provided] Stand-in agent. The autograder will replace this."""
     versions = ["print(40 + )\n", "print(20 + 21)\n", "print(20 + 22)\n"]
     return versions[min(attempt, len(versions) - 1)]
 
 
 def write_code(code, workdir):
-    """【已給你】把程式碼寫進 workdir/add.py。"""
+    """[Provided] Write code to workdir/add.py."""
     with open(os.path.join(workdir, "add.py"), "w") as f:
         f.write(code)
 
 
 def loop(check_cmd, workdir):
     # ===================================================================
-    # TODO: 實作握有 SUCCESS / FUSE / STALL 三個出口的 loop (見檔頭規格)
+    # TODO: implement a loop with SUCCESS / FUSE / STALL exits (see spec above)
     # ===================================================================
-    raise NotImplementedError("實作你的 loop()")
+    raise NotImplementedError("implement loop()")

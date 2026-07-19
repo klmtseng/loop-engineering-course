@@ -1,4 +1,4 @@
-"""練習 3 參考解答。對應第 3 課。"""
+"""Reference solution for Exercise 3. Corresponds to Lesson 3."""
 
 import json
 import time
@@ -42,7 +42,7 @@ def agent(attempt):
 
 
 def execute(action, workdir):
-    return f"已執行 {action}"
+    return f"executed {action}"
 
 
 def safe_loop(level, budget, logfile, workdir):

@@ -1,38 +1,40 @@
 """
-第 2 課 —— 退出條件與驗證閘門 (Exit Conditions & the Verify Gate)
+Lesson 2 -- Exit Conditions and the Verify Gate
 =================================================================
-第 1 課的 verify 是一個 Python 函式。真實世界裡,最可靠的驗證閘門通常是
-「跑一個命令、看它的結束碼 (exit code)」:
+Lesson 1's verify was a Python function. In the real world, the most reliable verify gate is usually
+"run a command and check its exit code":
 
-    pytest            → 0 = 全綠
-    ruff check .      → 0 = 沒問題
-    npm run build     → 0 = 編得過
-    curl -f health    → 0 = 服務還活著
+    pytest            -> 0 = all green
+    ruff check .      -> 0 = no issues
+    npm run build     -> 0 = build succeeded
+    curl -f health    -> 0 = service alive
 
-這種「between-iteration command」是 loop engineering 的標準零件:
-每一圈做完事,就跑一次檢查命令,用它的結束碼決定 loop 的命運。
+This kind of "between-iteration command" is the standard component in loop engineering:
+after each iteration, run the check command once, and use its exit code to decide the loop's fate.
 
-但「跑到綠為止」只是其中一個退出條件。一個能在真實世界活下來的 loop,
-至少要同時握有三個出口:
+But "run until green" is just one exit condition. A loop that can survive in the real world
+needs at least three exits simultaneously:
 
-    1. SUCCESS  檢查命令回傳 0 → 達標,收工 (這是你要的結局)
-    2. FUSE     圈數燒完仍未綠 → max-iter 保險絲,中止 (防無限燒錢)
-    3. STALL    連續兩圈產出一模一樣 → 卡住了,再跑也是白跑,提早止血
+    1. SUCCESS  check command returns 0 -> goal met, stop (the outcome you want)
+    2. FUSE     iterations exhausted, still not green -> max-iter fuse, abort (prevent infinite spending)
+    3. STALL    two consecutive iterations produce identical output -> stuck; running more is pointless, stop early
 
-少了 STALL,你的 loop 會在「鬼打牆」時把 max-iter 整個燒完才停 ——
-能省下的那幾圈,就是省下的錢和時間。
+Without STALL, a stuck loop burns through the entire max-iter budget before stopping --
+every wasted iteration is money and time you did not need to spend.
 
-⚠️ 講精確一點:這裡的 STALL 只比對「上一圈」,所以它只抓得到『不動點』(連續兩圈完全相同)。
-   它抓【不到】長度 ≥ 2 的循環,例如 A,B,A,B,A,B 這種來回震盪——那種還是會燒到 FUSE。
-   要抓循環,得記住「最近 N 圈的產出集合」,出現重複就判定打轉(仍是啟發式,見 textbook 延伸練習)。
-   本課保持 STALL 最簡形式,但你要知道它的界線在哪。
+Precise note: the STALL here only compares against the "previous iteration," so it only catches
+fixed points -- two consecutive identical outputs. It cannot catch cycles of length >= 2,
+such as an A, B, A, B, A, B oscillation -- those still burn to FUSE.
+To catch cycles, you need to remember "the outputs of the last N iterations" and stop when a repeat
+appears (still heuristic -- see the textbook extended exercises).
+This lesson keeps STALL in its simplest form, but you should know where its boundary is.
 
-本課做一個真的會跑 subprocess 的 loop:目標是讓一支自動產生的 Python 檔
-能通過一條檢查命令。全程純標準庫,不需金鑰、不需網路。
+This lesson builds a real subprocess-driven loop: the goal is to get an auto-generated Python file
+to pass a check command. Pure standard library, no keys, no network.
 
-執行:
+Run:
     python3 lesson2_exit_conditions.py
-    python3 lesson2_exit_conditions.py --animate    # 慢放,看紅→紅→綠 + 保險絲
+    python3 lesson2_exit_conditions.py --animate    # slow motion: watch red -> red -> green + fuse
 """
 
 import os
@@ -46,13 +48,14 @@ import anim
 
 
 # ===========================================================================
-# 驗證閘門 —— 跑一個真的命令,回傳 (是否通過, 命令的輸出)
+# Verify gate -- run a real command, return (passed, output)
 # ===========================================================================
 def run_check(cmd, cwd):
-    """跑檢查命令。結束碼 0 = 通過。輸出 (stdout+stderr) 當回饋餵回 agent。
+    """Run the check command. Exit code 0 = passed. Output (stdout+stderr) is fed back to the agent.
 
-    這就是「between-iteration command」的本體。注意我們把它的輸出原封不動
-    交給下一圈 —— agent 修錯的依據,就是測試/編譯器吐出來的真實錯誤訊息。
+    This is the between-iteration command in action. Notice we pass its output verbatim to the
+    next iteration -- the agent's material for fixing the error is the real error message
+    printed by the tests or compiler.
     """
     proc = subprocess.run(
         cmd, cwd=cwd, shell=True,
@@ -63,54 +66,55 @@ def run_check(cmd, cwd):
 
 
 # ===========================================================================
-# 假 agent —— 真實世界這裡是 Claude Code / Codex 去改程式碼
+# Mock agent -- in the real world this would be Claude Code / Codex editing code
 # ===========================================================================
-# 任務:寫出一支會印出 "42" 的 add.py。我們讓它前兩次故意出包:
-#   第 0 次:語法錯 (跑起來就炸)            → 檢查命令非 0
-#   第 1 次:跑得過,但答案錯 (印出 41)       → 檢查命令非 0
-#   第 2 次:正確                            → 檢查命令 = 0
-# 真實 agent 會「讀上一圈的錯誤輸出」再修;這裡用排好的版本模擬那個過程。
+# Task: write an add.py that prints "42". We let the first two attempts fail on purpose:
+#   Attempt 0: syntax error (crashes immediately)           -> check command non-zero
+#   Attempt 1: runs fine but wrong answer (prints 41)       -> check command non-zero
+#   Attempt 2: correct                                      -> check command = 0
+# A real agent would "read the error output from the previous iteration" and fix it;
+# here we use pre-written versions to simulate that process.
 _VERSIONS = [
     "print(40 + )\n",        # SyntaxError
-    "print(20 + 21)\n",      # 跑得過但 = 41,不對
-    "print(20 + 22)\n",      # = 42,正確
+    "print(20 + 21)\n",      # runs but = 41, wrong
+    "print(20 + 22)\n",      # = 42, correct
 ]
 
 
 def mock_agent(feedback, attempt):
     code = _VERSIONS[min(attempt, len(_VERSIONS) - 1)]
-    print(f"   ↳ agent 讀到的回饋:{feedback[:50]!r}")
-    print(f"   ↳ agent 寫出的程式:{code.strip()!r}")
+    print(f"   -> agent received feedback: {feedback[:50]!r}")
+    print(f"   -> agent produced code: {code.strip()!r}")
     return code
 
 
 # ===========================================================================
-# ★ 本課重點:一個握有三個出口的 loop
+# ★ Key concept for this lesson: a loop with three exits
 # ===========================================================================
 class Exit(Enum):
-    SUCCESS = "達標,綠了"
-    FUSE = "保險絲斷 (圈數燒完)"
-    STALL = "卡住 (連續兩圈產出相同)"
+    SUCCESS = "goal met, green"
+    FUSE = "fuse blown (iterations exhausted)"
+    STALL = "stalled (two consecutive identical outputs)"
 
 
 MAX_ITERS = 6
 
 
 def loop(check_cmd, workdir):
-    feedback = "(第一圈,還沒有回饋)"
-    last_code = None  # 記住上一圈的產出,用來偵測 STALL
+    feedback = "(first iteration, no feedback yet)"
+    last_code = None  # remember the previous iteration's output to detect STALL
 
     for i in range(1, MAX_ITERS + 1):
-        print(f"\n[第 {i} 圈]")
+        print(f"\n[Round {i}]")
         anim.fuse(i - 1, MAX_ITERS)
 
-        # --- act:agent 產出新版本,寫進工作目錄 ---
-        anim.step("✎", "act:agent 產一版程式碼")
+        # --- act: agent produces a new version, write it to the working directory ---
+        anim.step("✎", "act: agent produces a version of the code")
         code = mock_agent(feedback, attempt=i - 1)
 
-        # --- 出口 3:STALL —— 這圈和上圈產出一模一樣,再跑也沒意義 ---
+        # --- Exit 3: STALL -- this iteration is identical to the previous; running more is pointless ---
         if code == last_code:
-            print("   ⏹  和上一圈產出完全相同 → STALL,提早止血")
+            print("   ⏹  output identical to previous iteration -> STALL, stopping early")
             return Exit.STALL, None
         last_code = code
 
@@ -118,37 +122,38 @@ def loop(check_cmd, workdir):
         with open(target, "w") as f:
             f.write(code)
 
-        # --- verify:跑真的檢查命令 ---
-        anim.step("🔍", "verify:跑檢查命令看結束碼")
+        # --- verify: run the real check command ---
+        anim.step("🔍", "verify: run check command, read exit code")
         passed, output = run_check(check_cmd, cwd=workdir)
-        print(f"   ↳ 檢查命令 `{check_cmd}` → {'綠 ✅' if passed else '紅 ✗'}  輸出:{output!r}")
+        print(f"   -> check command `{check_cmd}` -> {'green ✅' if passed else 'red ✗'}  output: {output!r}")
         anim.pause()
 
-        # --- 出口 1:SUCCESS ---
+        # --- Exit 1: SUCCESS ---
         if passed:
             return Exit.SUCCESS, code
 
-        feedback = output  # 把錯誤輸出餵給下一圈
+        feedback = output  # pass the error output to the next iteration
 
-    # --- 出口 2:FUSE ---
+    # --- Exit 2: FUSE ---
     return Exit.FUSE, None
 
 
 # ===========================================================================
-# 檢查腳本 —— loop 的「between-iteration command」就跑它
+# Check script -- the "between-iteration command" for this loop
 # ===========================================================================
-# 真實專案裡這會是 pytest / ruff / build。這裡我們現寫一支小檢查腳本:
-# 跑 add.py、比對輸出,結束碼 0/1 當閘門,並印出「人和 agent 都讀得懂」的訊息。
-# 關鍵:它的輸出要有用 —— 那是下一圈 agent 修錯的唯一線索。
+# In a real project this would be pytest / ruff / build. Here we write a small check script:
+# run add.py, compare output, use exit code 0/1 as the gate, and print a message that
+# both humans and the agent can read.
+# Key: its output must be useful -- that is the agent's only material for the next fix.
 CHECK_PY = r'''
 import subprocess, sys
 r = subprocess.run([sys.executable, "add.py"], capture_output=True, text=True)
 got = r.stdout.strip()
 if r.returncode != 0:
-    print("add.py 執行就炸了:\n" + r.stderr.strip()); sys.exit(1)
+    print("add.py crashed:\n" + r.stderr.strip()); sys.exit(1)
 if got != "42":
-    print(f"跑得過,但印出的是 {got!r},期望 '42'"); sys.exit(1)
-print("OK:印出 42"); sys.exit(0)
+    print(f"ran fine, but printed {got!r} instead of '42'"); sys.exit(1)
+print("OK: printed 42"); sys.exit(0)
 '''
 
 
@@ -163,17 +168,17 @@ if __name__ == "__main__":
         check_cmd = "python3 check.py"
 
         print("=" * 64)
-        print("任務:讓 agent 反覆改 add.py,直到 `python3 add.py` 印出 42")
-        print(f"工作目錄:{workdir}")
-        print(f"檢查命令:{check_cmd}")
+        print("Task: have the agent iteratively fix add.py until `python3 add.py` prints 42")
+        print(f"Working directory: {workdir}")
+        print(f"Check command: {check_cmd}")
         print("=" * 64)
 
         reason, code = loop(check_cmd, workdir)
 
         print("\n" + "=" * 64)
-        print(f"退出原因:{reason.name} —— {reason.value}")
+        print(f"Exit reason: {reason.name} -- {reason.value}")
         if reason is Exit.SUCCESS:
-            print(f"通過的程式碼:{code.strip()!r}")
+            print(f"Passing code: {code.strip()!r}")
         print("=" * 64)
-        print("記住:verify 用『跑命令看結束碼』,退出條件至少要有 SUCCESS / FUSE / STALL 三個。")
-        print("換個 check_cmd (pytest、ruff、build…),這支 loop 一個字都不用改。")
+        print("Remember: verify via 'run a command, check exit code'; exit conditions need at least SUCCESS / FUSE / STALL.")
+        print("Swap check_cmd for pytest, ruff, or a build command -- this loop needs zero changes.")

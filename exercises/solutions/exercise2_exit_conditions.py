@@ -1,4 +1,4 @@
-"""練習 2 參考解答。對應第 2 課。"""
+"""Reference solution for Exercise 2. Corresponds to Lesson 2."""
 
 import os
 import subprocess
@@ -8,9 +8,9 @@ MAX_ITERS = 6
 
 
 class Exit(Enum):
-    SUCCESS = "達標,綠了"
-    FUSE = "保險絲斷(圈數燒完)"
-    STALL = "卡住(連續兩圈產出相同)"
+    SUCCESS = "goal met, green"
+    FUSE = "fuse blown (iterations exhausted)"
+    STALL = "stalled (two consecutive identical outputs)"
 
 
 def run_check(cmd, cwd):
@@ -29,7 +29,7 @@ def write_code(code, workdir):
 
 
 def loop(check_cmd, workdir):
-    feedback = "(第一圈)"
+    feedback = "(first round)"
     last_code = None
     for i in range(1, MAX_ITERS + 1):
         code = agent(feedback, attempt=i - 1)
