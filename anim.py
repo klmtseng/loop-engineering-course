@@ -1,29 +1,31 @@
 """
-anim.py —— 終端動畫小助手(純標準庫,選用)
-=============================================
-讓學生「看著 loop 真的在轉」。每一課加上 `--animate` 就會慢放演示
-act→verify→decide 的節奏,並畫出保險絲進度條。
+anim.py -- terminal animation helper (standard library only, optional)
+=======================================================================
+Lets students "watch the loop actually turning." Each lesson gains slow-motion
+playback of the act -> verify -> decide rhythm with `--animate`, including a fuse
+progress bar.
 
-設計重點:**關閉時(沒給 --animate)所有函式都是 no-op**——不印任何東西、不 sleep。
-所以課程的預設輸出一個字都不會變,自動化/autograder 也完全不受影響。
+Key design: **when disabled (no --animate flag), all functions are no-ops** -- they
+print nothing and do not sleep. The default output of each lesson is unchanged word
+for word, and automated graders are completely unaffected.
 
-用法(在課程腳本裡):
+Usage (inside a lesson script):
     import anim
-    anim.from_argv()        # 讀 argv 的 --animate;沒給就維持一般模式
+    anim.from_argv()        # read --animate from argv; stay in normal mode if absent
 
-    anim.pause()            # 慢放停頓(關閉時不 sleep)
-    anim.fuse(i, MAX)       # 畫保險絲條 ◉◉◯◯(關閉時不印)
-    anim.step("✎", "做一步")  # 帶停頓的敘述行(關閉時不印)
+    anim.pause()            # slow-motion pause (no sleep when disabled)
+    anim.fuse(i, MAX)       # draw fuse bar: filled/empty circles (no print when disabled)
+    anim.step("->", "do one step")  # narrated step line with pause (no print when disabled)
 """
 
 import sys
 import time
 
-_ON = False  # 是否開啟動畫(--animate)
+_ON = False  # whether animation mode (--animate) is active
 
 
 def from_argv(argv=None):
-    """從命令列參數判斷要不要開動畫。回傳是否開啟。"""
+    """Read command-line arguments and activate animation if --animate is present. Returns whether active."""
     global _ON
     argv = sys.argv if argv is None else argv
     _ON = "--animate" in argv
@@ -35,22 +37,22 @@ def on():
 
 
 def pause(seconds=0.7):
-    """慢放停頓。關閉時不 sleep(所以一般/CI 跑起來照樣很快)。"""
+    """Slow-motion pause. Does not sleep when disabled (so normal / CI runs are just as fast)."""
     if _ON:
         time.sleep(seconds)
 
 
-def fuse(used, total, label="保險絲"):
-    """畫一條保險絲/進度條:◉ 已用、◯ 剩餘。關閉時不印。"""
+def fuse(used, total, label="fuse"):
+    """Draw a fuse / progress bar: filled circles used, empty circles remaining. No print when disabled."""
     if not _ON:
         return
-    bar = "◉" * used + "◯" * max(0, total - used)
+    bar = "o" * used + "." * max(0, total - used)
     print(f"      {label} [{bar}] {used}/{total}")
     pause(0.25)
 
 
 def step(glyph, msg, seconds=0.7):
-    """印一行帶字形的敘述步驟並停頓。關閉時不印(預設輸出不變)。"""
+    """Print a narrated step line with a glyph and pause. No print when disabled (default output unchanged)."""
     if not _ON:
         return
     print(f"      {glyph} {msg}")
@@ -58,8 +60,8 @@ def step(glyph, msg, seconds=0.7):
 
 
 def banner(msg):
-    """動畫模式下的小標題。關閉時不印。"""
+    """Small section header in animation mode. No print when disabled."""
     if not _ON:
         return
-    print(f"\n  ╭─ {msg}")
+    print(f"\n  +-- {msg}")
     pause(0.4)
