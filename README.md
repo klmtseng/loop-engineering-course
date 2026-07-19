@@ -188,3 +188,7 @@ The loop skeleton needs no changes at all -- that is precisely the point of this
 
 > **Traditional Chinese version**: the original Traditional Chinese README and all textbook chapters
 > are preserved in [`zh-tw/`](zh-tw/) as a bonus resource.
+
+## Essays
+
+- [Who Gets to Define "Verify"?](essays/who-gets-to-define-verify.md) - Loop Engineering in Practice #1: gate freeze, miss ledgers, and auditing the auditor. Release gates for this repo: [RELEASE.md](RELEASE.md).
