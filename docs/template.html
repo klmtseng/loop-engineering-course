@@ -1,16 +1,16 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>Loop Engineering from Scratch — 互動課程</title>
+<title>Loop Engineering from Scratch — Interactive Course</title>
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
   :root{--bg:#0d1117;--panel:#161b22;--ink:#e6edf3;--mut:#8b949e;--acc:#58a6ff;--ok:#3fb950;--bad:#f85149;--line:#30363d}
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 -apple-system,"Noto Sans CJK TC","PingFang TC",Segoe UI,sans-serif}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 -apple-system,Segoe UI,sans-serif}
   header{padding:12px 18px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:center;flex-wrap:wrap;position:sticky;top:0;background:var(--bg);z-index:5}
   header h1{font-size:16px;margin:0;white-space:nowrap}
   header h1 a{color:var(--ink);text-decoration:none}
@@ -56,52 +56,51 @@
 <body>
 <header>
   <h1><a href="#home">Loop Engineering</a></h1>
-  <select id="nav"><option value="home">課程總覽</option></select>
+  <select id="nav"><option value="home">Course Overview</option></select>
   <span id="dots"></span>
-  <span id="status">啟動中…</span>
+  <span id="status">Loading...</span>
 </header>
 
 <div id="hub" class="hub" style="display:none">
   <h2>Loop Engineering from Scratch</h2>
-  <p>教 AI 自己把事情做完、做對、然後停。<b>10 課、瀏覽器直接跑 Python、練習線上批改、零安裝。</b></p>
-  <p class="hint">Prompt engineering 是「你想好一句話,看一次結果」;loop engineering 是「你設計一個系統,
-  讓它自己 做→驗→再來,直到達標或撞上限」。左邊讀課文、右邊跑示範+寫練習,autograder 全綠即過關(進度存在你的瀏覽器)。</p>
+  <p>Teach AI to finish tasks correctly and then stop on its own. <b>10 lessons, Python runs directly in the browser, exercises auto-graded online, zero install.</b></p>
+  <p class="hint">Prompt engineering is "craft one message, see one result"; loop engineering is "design a system that act -> verify -> repeat on its own until the goal is met or a limit is hit." Read the chapter on the left, run demos and write exercises on the right -- all autograder checks green means you pass (progress saved in your browser).</p>
   <div class="lesson-list" id="lessonList"></div>
-  <p class="hint" style="margin-top:18px">🎓 十課全過後:<b>Capstone 總驗收</b>需要本機環境(subprocess/cron),
-  請 <a href="https://github.com/klmtseng/loop-engineering-course" target="_blank">clone GitHub repo</a>
-  照 <code>capstone/SPEC.md</code> 做,並用 <code>python3 progress.py</code> 看完整進度。</p>
+  <p class="hint" style="margin-top:18px">After all ten lessons pass: the <b>Capstone final assessment</b> requires a local environment (subprocess/cron).
+  Please <a href="https://github.com/klmtseng/loop-engineering-course" target="_blank">clone the GitHub repo</a>,
+  follow <code>capstone/SPEC.md</code>, and use <code>python3 progress.py</code> to see full progress.</p>
 </div>
 
 <div id="lesson" class="wrap" style="display:none">
   <div class="col left"><div id="chmd" class="md"></div></div>
   <div class="col right">
     <div class="card">
-      <h3 id="demoTitle">▶ 看這課跑起來</h3>
+      <h3 id="demoTitle">&#9654; Run this lesson</h3>
       <div class="row">
-        <button id="runAnim" class="primary" disabled>▶ 動畫模式</button>
-        <button id="runPlain" disabled>▶ 一般模式</button>
-        <span id="demoBadge" class="badge" style="display:none">📼 錄製重播</span>
+        <button id="runAnim" class="primary" disabled>&#9654; Animate</button>
+        <button id="runPlain" disabled>&#9654; Normal</button>
+        <span id="demoBadge" class="badge" style="display:none">&#128252; Recorded playback</span>
       </div>
       <p id="demoHint" class="hint"></p>
-      <div id="lessonOut" class="term">（按上面的按鈕)</div>
+      <div id="lessonOut" class="term">(click a button above)</div>
     </div>
     <div class="card">
-      <h3>✍️ 動手練習 + 自動評分 <span id="passBadge" class="badge passbadge" style="display:none">✅ 已過關</span></h3>
+      <h3>Practice + Auto-grade <span id="passBadge" class="badge passbadge" style="display:none">Passed</span></h3>
       <p class="hint" id="exHint"></p>
       <textarea id="code" spellcheck="false" disabled></textarea>
       <div class="row" style="margin-top:10px">
-        <button id="check" class="primary" disabled>✓ 驗收</button>
-        <button id="solution" disabled>看參考解答</button>
-        <button id="reset" disabled>重設</button>
+        <button id="check" class="primary" disabled>Grade</button>
+        <button id="solution" disabled>Show solution</button>
+        <button id="reset" disabled>Reset</button>
       </div>
-      <div id="checkOut" class="term">（補完 TODO 後按「驗收」)</div>
+      <div id="checkOut" class="term">(complete the TODOs then click Grade)</div>
     </div>
   </div>
 </div>
 
 <footer>
-  <a href="https://github.com/klmtseng/loop-engineering-course" target="_blank">GitHub 原始碼(MIT)</a>
-  · 全部程式在你的瀏覽器裡執行(Pyodide),不會上傳任何內容
+  <a href="https://github.com/klmtseng/loop-engineering-course" target="_blank">GitHub source (MIT)</a>
+  &middot; All code runs in your browser (Pyodide) -- nothing is uploaded
 </footer>
 
 <script>
@@ -123,7 +122,7 @@ function paintProgress(){
   $("dots").textContent = LESSONS.map(l => s.has(l.id) ? "◉" : "◯").join("");
   for(const l of LESSONS){
     const el = $("st-"+l.id);
-    if(el){ el.textContent = s.has(l.id) ? "✅ 已過關" : "未完成"; el.className = "st"+(s.has(l.id)?" done":""); }
+    if(el){ el.textContent = s.has(l.id) ? "Passed" : "Not done"; el.className = "st"+(s.has(l.id)?" done":""); }
   }
 }
 
@@ -131,7 +130,7 @@ function paintProgress(){
 function buildNav(){
   for(const l of LESSONS){
     const o = document.createElement("option");
-    o.value = l.id; o.textContent = `第 ${l.id} 課 · ${l.title}`;
+    o.value = l.id; o.textContent = `Lesson ${l.id} - ${l.title}`;
     $("nav").appendChild(o);
   }
   $("nav").onchange = () => location.hash = $("nav").value === "home" ? "home" : $("nav").value;
@@ -140,8 +139,8 @@ function buildNav(){
     const a = document.createElement("a");
     a.className = "lrow"; a.href = "#"+l.id;
     a.innerHTML = `<span class="num">${l.id}</span><span>${l.title}</span>` +
-      (l.mode==="recorded" ? `<span class="badge">📼</span>` : `<span class="badge">▶ live</span>`) +
-      `<span class="st" id="st-${l.id}">未完成</span>`;
+      (l.mode==="recorded" ? `<span class="badge">&#128252;</span>` : `<span class="badge">&#9654; live</span>`) +
+      `<span class="st" id="st-${l.id}">Not done</span>`;
     list.appendChild(a);
   }
 }
@@ -161,16 +160,16 @@ function showLesson(L){
   $("nav").value = String(L.id);
   $("chmd").innerHTML = marked.parse(L.ch);
   const rec = L.mode === "recorded";
-  $("demoTitle").textContent = `▶ 看第 ${L.id} 課跑起來`;
+  $("demoTitle").textContent = `Run Lesson ${L.id}`;
   $("demoBadge").style.display = rec ? "" : "none";
   $("demoHint").textContent = rec
-    ? "此課示範用到 subprocess / 真 threads,瀏覽器沙盒不支援 —— 播放的是 build 時在真機錄下的原始輸出。"
-    : `在你瀏覽器裡真的執行 ${L.lesson}`;
+    ? "This lesson's demo uses subprocess / real threads which the browser sandbox does not support -- playing back the original output recorded on a real machine at build time."
+    : `Running ${L.lesson} live in your browser`;
   $("runPlain").style.display = rec ? "none" : "";
-  $("lessonOut").textContent = "（按上面的按鈕)";
+  $("lessonOut").textContent = "(click a button above)";
   $("code").value = FILES[L.ex];
-  $("exHint").textContent = `把 ${L.ex} 的 TODO 補完,按「驗收」線上批改(autograder 與本機版完全相同)。`;
-  $("checkOut").textContent = "（補完 TODO 後按「驗收」)";
+  $("exHint").textContent = `Complete the TODOs in ${L.ex} and click Grade to check online (same autograder as the local version).`;
+  $("checkOut").textContent = "(complete the TODOs then click Grade)";
   $("passBadge").style.display = passed().has(L.id) ? "" : "none";
   document.querySelector(".col.left").scrollTop = 0;
   window.scrollTo(0,0);
@@ -236,7 +235,7 @@ try:
 except SystemExit as _e:
     _rc = _e.code if isinstance(_e.code, int) else 0
 except Exception:
-    import traceback; _buf.write("\\n執行錯誤:\\n"+traceback.format_exc())
+    import traceback; _buf.write("\\nExecution error:\\n"+traceback.format_exc())
     _rc = 1
 finally:
     sys.stdout = _o
@@ -251,12 +250,12 @@ function bind(){
     const o = $("lessonOut");
     if(cur.mode === "recorded"){ reveal(o, cur.recording, 60); return; }
     o.textContent = "跑…";
-    try{ reveal(o, runLesson(cur, true), 60); }catch(e){ o.textContent = "錯誤:"+e; }
+    try{ reveal(o, runLesson(cur, true), 60); }catch(e){ o.textContent = "Error: "+e; }
   };
   $("runPlain").onclick = ()=>{
     const o = $("lessonOut");
     try{ o.textContent = runLesson(cur, false); o.scrollTop = o.scrollHeight; }
-    catch(e){ o.textContent = "錯誤:"+e; }
+    catch(e){ o.textContent = "Error: "+e; }
   };
   $("check").onclick = ()=>{
     const o = $("checkOut"); o.textContent = "批改中…";
@@ -264,25 +263,25 @@ function bind(){
       const r = runCheck(cur, $("code").value);
       o.textContent = r.out; o.scrollTop = o.scrollHeight;
       if(r.rc === 0){ markPassed(cur.id); $("passBadge").style.display = ""; }
-    }catch(e){ o.textContent = "錯誤:"+e; }
+    }catch(e){ o.textContent = "Error: "+e; }
   };
   $("solution").onclick = ()=>{ $("code").value = FILES["solutions/"+cur.ex]; };
   $("reset").onclick = ()=>{ $("code").value = FILES[cur.ex];
-    $("checkOut").textContent = "（補完 TODO 後按「驗收」)"; };
+    $("checkOut").textContent = "(complete the TODOs then click Grade)"; };
 }
 
 async function main(){
   buildNav(); paintProgress();
   window.addEventListener("hashchange", route);
   route();
-  setStatus("載入 Python 執行環境(Pyodide,首次約幾 MB)…");
+  setStatus("Loading Python runtime (Pyodide, first load ~few MB)...");
   pyodide = await loadPyodide();
   writeFiles(); bind();
   for(const b of ["runAnim","runPlain","check","solution","reset"]) $(b).disabled = false;
   $("code").disabled = false;
-  setStatus("就緒 ✓ 全部在你的瀏覽器裡跑");
+  setStatus("Ready - all code runs in your browser");
 }
-main().catch(e=>setStatus("啟動失敗:"+e));
+main().catch(e=>setStatus("Startup failed: "+e));
 </script>
 </body>
 </html>
