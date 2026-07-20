@@ -10,7 +10,9 @@ The gate was a statistical check in a physics replication, and the result left n
 
 I almost merged it.
 
-Loop engineering is the phrase of the summer, and the advice behind it is good. Stop tweaking prompts. Design the loop. Give your agent a trigger, a verify step, and a stop condition. I run dozens of agent projects on a single machine and I agree with every word.
+Loop engineering is the phrase of the summer, and the advice behind it is good. Stop tweaking prompts. Design the loop. Give your agent a trigger, a verify step, and a stop condition. I run a few dozen agent projects on a single machine and I agree with every word.
+
+Two essays made the rounds this month. One teaches you to freeze the worker and engineer the harness around it ([harness-engineering](https://github.com/lopopolo/harness-engineering)). The other teaches you to draw the work as a graph: fan out a fleet of subagents, reduce with plain code, put adversarial verifiers on the edges ([Graph Engineering with Claude](https://x.com/0xCodez/status/2079165300625330317)). Both are good. Both point in the same direction as what my own rules directory has encoded since early July, before either essay appeared. But both stop one step short: a verifier node is still just a node.
 
 But a few weeks of entries in my failure ledger point at a question the think pieces skip. Everyone says "add a verify step." Almost nobody asks who is allowed to define it.
 
@@ -31,11 +33,11 @@ There is a subtler version of this failure. In a game engine project, a subagent
 
 "Remember to add a reviewer" is a habit, and habits get skipped on busy days. What we wanted was a property: a state of the system in which the builder cannot bypass acceptance even if it tries. Three mechanisms did most of the work.
 
-**Gate freeze.** A builder may never redefine a gate it just failed. A strict FAIL stays on the record. If new evidence suggests the gate itself was wrong, the appeal goes through an independent reviewer who sets up a new gate; the old verdict is never edited. In the goalpost incident this rule is what saved us. The frozen FAIL stood, an independent convergence test at larger N was run as a separate gate, and it passed cleanly (KS p = 0.219). The final conclusion happened to match what the cheating agent claimed. The process still mattered, because a conclusion that arrives through a corrupted gate is worthless the next hundred times.
+**Gate freeze.** A builder may never redefine a gate it just failed. A strict FAIL stays on the record. If new evidence suggests the gate itself was wrong, the appeal goes through an independent reviewer who sets up a new gate; the old verdict is never edited. In the goalpost incident this rule is what saved us. The frozen FAIL stood, an independent convergence test at larger N was run as a separate gate, and it passed cleanly (KS p = 0.219). Even though the honest re-test reached the same conclusion the cheating agent had claimed, the process still mattered: a conclusion that arrives through a corrupted gate is worthless the next hundred times.
 
 **A miss ledger.** Every failure the audit ever caught becomes a mandatory challenge in future audits. The reviewer that missed something last month is forced to look for that exact class of miss forever after. The evaluator gets harder over time instead of staying static.
 
-**Golden cases, or auditing the auditor.** The audit framework itself gets tested for recall against a benchmark of real, expert-confirmed defects. The first benchmark run was humbling: the old framework recovered 2.5 of 6 known defects (a partial hit counted as half). After a redesign it recovered 5 of 6 and found 3 new problems the builder never knew about. A meta-audit of the framework also surfaced 5 template bugs in the framework itself. The lesson generalizes: an evaluator that is never evaluated is just another builder grading its own homework.
+**Golden cases, or auditing the auditor.** The audit framework itself gets tested for recall against a benchmark of real, expert-confirmed defects. The first benchmark run was humbling: the old framework recovered 2.5 of 6 known defects (a partial hit counted as half). After a redesign it recovered 5 of 6 and, in the same benchmark project, surfaced 3 new problems the builder never knew about. A separate meta-audit later found 5 template bugs in the framework itself. The lesson generalizes: an evaluator that is never evaluated is just another builder grading its own homework.
 
 ## A month of receipts
 
